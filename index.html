@@ -373,7 +373,7 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
   <div class="row" style="padding:0 16px 18px"><button class="btn primary" id="save" type="button">Apply settings</button><span class="muted sm" id="save-msg"></span></div>
 </details>
 
-<p class="note">Every 15 seconds the site checks 5-minute trading volume on every meme pool it tracks (from DexScreener), then pulls whale swaps from the pools where the most money is moving (from GeckoTerminal, which allows about 30 requests a minute). New pools come from GeckoTerminal's trending, new and top lists plus DexScreener's boosted and newly listed tokens; only pools with at least your minimum 24h volume and $10K of liquidity are tracked. Click any swap to open its details in a new tab. Stock prints, quotes, news, analyst ratings and insider filings come from Finnhub, and each print is tagged with the tick test because trades don't say who bought or sold. Extra Whale Sonar tabs mirror the first one instead of making their own requests. None of this is financial advice.</p>
+<p class="note">Every 15 seconds the site checks 5-minute trading volume on every meme pool it tracks (from DexScreener), then pulls whale swaps from the pools where the most money is moving (from GeckoTerminal, which allows about 10 requests a minute). New pools come from GeckoTerminal's trending and new lists plus DexScreener's boosted and newly listed tokens; only pools with at least your minimum 24h volume and $10K of liquidity are tracked. Click any swap to open its details in a new tab. Stock prints, quotes, news, analyst ratings and insider filings come from Finnhub, and each print is tagged with the tick test because trades don't say who bought or sold. Extra Whale Sonar tabs mirror the first one instead of making their own requests. None of this is financial advice.</p>
 </div>
 
 <script>
@@ -715,9 +715,9 @@ const solTrades = new Map(); // trade id -> trade
 const scannedOnce = new Set();
 let walletFilter = null, discovering = false, scanning = false, pulsing = false, lastScanAt = 0;
 
-// GeckoTerminal allows about 30 requests a minute per network, shared with anything else on it.
-// Space requests 2.3s apart, widen the gap when rate-limited and narrow it again as requests succeed.
-const GAP_MIN = 2300, GAP_MAX = 15000;
+// GeckoTerminal's keyless API allows about 10 requests a minute per network, shared with anything else on it.
+// Space requests 6.5s apart, widen the gap when rate-limited and narrow it again as requests succeed.
+const GAP_MIN = 6500, GAP_MAX = 30000;
 const gq = []; let gBusy = false, gGap = GAP_MIN, gtLimited = false;
 // prio 1 = whale-swap scans, which go ahead of pool discovery (prio 0).
 function gt(path, prio = 0){ return new Promise((res, rej) => { gq.push({path, res, rej, tries:0, prio}); gPump(); }); }
@@ -735,7 +735,7 @@ async function gPump(){
     if (r.status === 429) limited = true;
     else if (!r.ok) job.rej(new Error("HTTP "+r.status));
     else {
-      gGap = Math.max(GAP_MIN, gGap - 250);
+      gGap = Math.max(GAP_MIN, Math.round(gGap * 0.9));
       const j = await r.json();
       if (gtLimited){ gtLimited = false; updateSolStatus(); renderSolSoon(); }
       job.res(j);
@@ -769,15 +769,8 @@ function upsertPool(o){
 async function discoverGT(){
   if (discovering || !isLeader) return;
   discovering = true;
-  const lists = [
-    ["/networks/solana/trending_pools?page=1", "trending"],
-    ["/networks/solana/new_pools?page=1", "new"],
-    ["/networks/solana/pools?page=1", "top"],
-    ["/networks/solana/trending_pools?page=2", "trending"],
-    ["/networks/solana/pools?page=2", "top"]
-  ];
-  // When rate-limited, keep the scarce requests for whale scans; DexScreener still finds pools.
-  for (const [path, src] of gGap > 5000 ? lists.slice(0, 2) : lists){
+  // Only two lists: requests are scarce and whale scans need them more; DexScreener finds the rest.
+  for (const [path, src] of [["/networks/solana/trending_pools?page=1", "trending"], ["/networks/solana/new_pools?page=1", "new"]]){
     if (!isLeader) break;
     try {
       const r = await gt(path);
