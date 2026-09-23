@@ -636,8 +636,11 @@ addEventListener("hashchange", () => { const h = location.hash.slice(1); if (TAB
 const TAB = Math.random().toString(36).slice(2);
 function claimLeader(){
   const l = store.get("leader", null), now = Date.now();
-  if (l && l.id !== TAB && now - l.at < 15000) return false;
-  store.set("leader", {id:TAB, at:now});
+  // Chrome runs timers in background tabs as rarely as once a minute, so a shorter window lets
+  // hidden tabs keep stealing the lead from each other. For the same reason a hidden leader scans
+  // slowly, so a visible tab takes over from it.
+  if (l && l.id !== TAB && now - l.at < 90000 && (l.vis || document.hidden)) return false;
+  store.set("leader", {id:TAB, at:now, vis:!document.hidden});
   const c = store.get("leader", null);
   return !c || c.id === TAB;
 }
@@ -719,6 +722,7 @@ const gq = []; let gBusy = false, gGap = GAP_MIN, gtLimited = false;
 // prio 1 = whale-swap scans, which go ahead of pool discovery (prio 0).
 function gt(path, prio = 0){ return new Promise((res, rej) => { gq.push({path, res, rej, tries:0, prio}); gPump(); }); }
 async function gPump(){
+  if (!isLeader){ for (const j of gq.splice(0)) j.rej(new Error("another tab is fetching")); return; }
   if (gBusy || !gq.length) return;
   gBusy = true;
   let k = 0;
@@ -1142,6 +1146,7 @@ const fq = []; let fBusy = false, fBack = 0;
 function fh(path){ return new Promise((res, rej) => { fq.push({path, res, rej, tries:0}); fPump(); }); }
 function resetFinnhub(){ while (fq.length) fq.shift().rej(new Error("reset")); keyBad = false; }
 async function fPump(){
+  if (!isLeader){ for (const j of fq.splice(0)) j.rej(new Error("reset")); return; }
   if (fBusy || !fq.length) return;
   fBusy = true;
   const job = fq.shift();
@@ -1365,18 +1370,20 @@ function followerSync(){
 function startLeader(){
   loadBlocks(); connectStocks();
   discoverDexScreener().then(pulse);
-  discoverGT();
+  if (!pools.size) discoverGT();
   if (!scanning) scanLoop();
   refreshStocks(); updateSolStatus();
 }
 function stopLeader(){ if (ws){ ws.onclose = null; try{ ws.close(); }catch{} ws = null; } clearTimeout(wsTimer); }
-setInterval(() => {
+function heartbeat(){
   const was = isLeader;
   isLeader = claimLeader();
   if (isLeader && !was) startLeader();
   if (!isLeader && was) stopLeader();
   if (!isLeader) followerSync();
-}, 5000);
+}
+setInterval(heartbeat, 5000);
+addEventListener("visibilitychange", heartbeat);
 
 fillSettings(); syncChips();
 $("st-mkt").textContent = marketState();
