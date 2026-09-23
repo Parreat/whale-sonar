@@ -117,6 +117,7 @@ h3{font:600 12px var(--body);text-transform:uppercase;letter-spacing:.08em;color
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;min-width:0}
 .panel-head{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .panel-head .meta{font-size:12px;color:var(--muted);margin-left:auto}
+#sol-th-edit{margin-left:10px;font-size:12px}
 .chip{font:600 11px var(--mono);padding:2px 7px;border-radius:4px;background:var(--sonar-dim);color:var(--sonar)}
 .chip.stk{background:color-mix(in srgb,var(--stock) 15%,transparent);color:var(--stock)}
 .chips{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line)}
@@ -274,7 +275,7 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
           <button class="subtab" type="button" role="tab" data-view="big">Biggest volume</button>
           <button class="subtab" type="button" role="tab" data-view="all">All swaps</button>
         </div>
-        <span class="meta" id="sol-meta"></span>
+        <span class="meta" id="sol-meta"></span><a class="sm" href="#settings" id="sol-th-edit">change size</a>
       </div>
       <div class="chips" id="mc-chips" role="group" aria-label="Filter by market cap">
         <button class="chipbtn" type="button" data-band="all">All caps</button>
@@ -364,7 +365,7 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
 <details class="settings" id="settings">
   <summary>Settings: thresholds, watchlist, extra coins</summary>
   <div class="sgrid">
-    <label for="sol-th">Solana whale size (USD per swap)<input type="number" id="sol-th" min="500" step="500"></label>
+    <label for="sol-th">Solana whale size (USD per swap)<input type="number" id="sol-th" min="1" step="any"></label>
     <label for="min-vol">Only scan meme pools trading at least (USD per 24h)<input type="number" id="min-vol" min="10000" step="10000"></label>
     <label for="stk-th">Stock block size (USD per print)<input type="number" id="stk-th" min="50000" step="50000"></label>
     <label for="watch">Stock watchlist (comma separated, up to 50)<input type="text" id="watch"></label>
@@ -1355,7 +1356,7 @@ $("key-clear").onclick = () => { $("key").value = ""; saveKey(""); };
 $("sig-add-key").onclick = () => { showTab("stocks"); $("key-inline").focus(); };
 $("save").onclick = () => {
   const old = {solTh:S.solTh, minVol:S.minVol, key:S.key, watch:S.watch.join()};
-  S.solTh = Math.max(500, +$("sol-th").value || 2500);
+  S.solTh = Math.max(1, +$("sol-th").value || 2500);
   S.minVol = Math.max(10000, +$("min-vol").value || 100000);
   S.stkTh = Math.max(50000, +$("stk-th").value || 1000000);
   S.watch = [...new Set($("watch").value.split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(s => /^[A-Z][A-Z.\-]{0,9}$/.test(s)))].slice(0, 50);
@@ -1370,6 +1371,8 @@ $("save").onclick = () => {
   renderSol(); renderStocks(); renderSignals(); updateSolStatus();
   $("save-msg").textContent = "Saved.";
 };
+$("sol-th-edit").onclick = e => { e.preventDefault(); $("settings").open = true; $("sol-th").focus(); $("sol-th").select(); };
+$("sol-th").addEventListener("keydown", e => { if (e.key === "Enter") $("save").click(); });
 $("extra-add").onclick = async () => {
   const m = $("extra").value.trim(); if (!m) return;
   $("extra-msg").textContent = "Looking up…";
