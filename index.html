@@ -7,33 +7,32 @@
 <script>if (/[?&]view=trade(&|$)/.test(location.search)) document.documentElement.classList.add("tradeview");</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
 :root{
   color-scheme: dark;
-  --ground:#081116; --surface:#0E1C23; --surface-2:#132630; --line:#1D3440;
-  --text:#D6E5E9; --muted:#7B98A2; --faint:#4A6571;
-  --sonar:#3FD0C9; --sonar-dim:rgba(63,208,201,.14);
-  --buy:#5BD69A; --sell:#F2667A; --stock:#F2B84B;
-  --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --ground:#0E1116; --surface:#151A21; --surface-2:#1B212A; --line:#262D38;
+  --text:#E2E5EA; --muted:#8B93A0; --faint:#59616D;
+  --sonar:#4C8DF6; --sonar-dim:rgba(76,141,246,.14);
+  --buy:#26A69A; --sell:#EF5350; --stock:#D9A33A;
   --body:"IBM Plex Sans", system-ui, -apple-system, sans-serif;
   --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]){
     color-scheme: light;
-    --ground:#EEF4F5; --surface:#FFFFFF; --surface-2:#F4F8F9; --line:#D3E0E4;
-    --text:#0D2129; --muted:#557079; --faint:#93AAB2;
-    --sonar:#0E8F8A; --sonar-dim:rgba(14,143,138,.12);
-    --buy:#16915A; --sell:#CF3450; --stock:#B7790B;
+    --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#F0F2F5; --line:#DCE0E5;
+    --text:#131722; --muted:#5D6572; --faint:#9AA1AC;
+    --sonar:#1F5FD1; --sonar-dim:rgba(31,95,209,.10);
+    --buy:#08897A; --sell:#D32F2F; --stock:#A86F0A;
   }
 }
 :root[data-theme="light"]{
   color-scheme: light;
-  --ground:#EEF4F5; --surface:#FFFFFF; --surface-2:#F4F8F9; --line:#D3E0E4;
-  --text:#0D2129; --muted:#557079; --faint:#93AAB2;
-  --sonar:#0E8F8A; --sonar-dim:rgba(14,143,138,.12);
-  --buy:#16915A; --sell:#CF3450; --stock:#B7790B;
+  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#F0F2F5; --line:#DCE0E5;
+  --text:#131722; --muted:#5D6572; --faint:#9AA1AC;
+  --sonar:#1F5FD1; --sonar-dim:rgba(31,95,209,.10);
+  --buy:#08897A; --sell:#D32F2F; --stock:#A86F0A;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -50,15 +49,14 @@ a{color:inherit}
 .neg{color:var(--sell)}
 header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:20px 12px}
 .detail-head{border-bottom:1px solid var(--line);padding-bottom:16px}
-.brand{font:800 28px/1 var(--display);letter-spacing:-.02em;display:flex;align-items:center;gap:10px;text-decoration:none}
-.brand svg{width:30px;height:30px;flex:none}
+.brand{font:600 18px/1 var(--body);letter-spacing:-.01em;display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand svg{width:22px;height:22px;flex:none}
 .brand small{font:500 12px var(--body);color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-left:4px}
 .status{display:flex;gap:14px;margin-left:auto;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--muted)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);margin-right:6px;vertical-align:1px}
-.dot.live{background:var(--buy);animation:pulse 2s infinite}
+.dot.live{background:var(--buy)}
 .dot.warn{background:var(--stock)}
 .dot.err{background:var(--sell)}
-@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--buy) 60%,transparent)}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
 button,input,select{font:inherit;color:inherit}
 .btn{display:inline-block;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer;text-decoration:none}
 .btn:hover{border-color:var(--sonar)}
@@ -68,10 +66,10 @@ button,input,select{font:inherit;color:inherit}
 /* tabs */
 .maintabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
 .maintabs::-webkit-scrollbar{display:none}
-.mtab{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-1px;padding:12px 14px 11px;font:700 17px/1 var(--display);letter-spacing:-.01em;color:var(--muted);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:8px}
+.mtab{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-1px;padding:12px 14px 11px;font:600 14px/1 var(--body);color:var(--muted);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:8px}
 .mtab:hover{color:var(--text)}
 .mtab[aria-selected="true"]{color:var(--text);border-bottom-color:var(--sonar)}
-.badge{font:600 11px var(--mono);letter-spacing:0;padding:2px 7px;border-radius:999px;background:var(--sonar-dim);color:var(--sonar)}
+.badge{font:600 11px var(--mono);letter-spacing:0;padding:2px 7px;border-radius:4px;background:var(--sonar-dim);color:var(--sonar)}
 .badge:empty{display:none}
 .tabpanel{padding-top:20px}
 .split{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start}
@@ -83,24 +81,19 @@ button,input,select{font:inherit;color:inherit}
 .subhead{padding:14px 16px 4px;margin:0}
 
 /* sidebar */
-.scope{position:relative;aspect-ratio:1;width:100%;max-width:360px;margin:0 auto}
-.scope canvas{width:100%;height:100%;display:block}
-.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);justify-content:center;margin-top:-6px}
-.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:0}
-.legend i.ring{background:transparent;border:2px solid var(--stock)}
-.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .tiles.two{grid-template-columns:repeat(2,1fr)}
 .stk-tiles{margin-bottom:20px}
 .tile{background:var(--surface);padding:14px 16px;min-width:0}
 .tile .k,.fact .k{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .tile .v{font:600 22px/1.25 var(--mono);font-variant-numeric:tabular-nums;margin-top:4px;overflow-wrap:anywhere}
 .tile .s{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.flow,.whales{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.flow,.whales{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
 .flow-head{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);gap:8px;flex-wrap:wrap}
 .bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surface-2);margin-top:10px}
 .bar .b{background:var(--buy);transition:width .6s}
 .bar .s{background:var(--sell);transition:width .6s}
-h2{font:800 18px/1.2 var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+h2{font:600 15px/1.2 var(--body);margin:0;text-wrap:balance}
 h3{font:600 12px var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}
 .wl{list-style:none;margin:0;padding:0;display:grid}
 .wl li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:5px 0;border-bottom:1px dashed var(--line);font-size:13px;cursor:pointer}
@@ -114,14 +107,14 @@ h3{font:600 12px var(--body);text-transform:uppercase;letter-spacing:.08em;color
 .empty{color:var(--muted);font-size:13px}
 
 /* panels and feeds */
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;min-width:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;min-width:0}
 .panel-head{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .panel-head .meta{font-size:12px;color:var(--muted);margin-left:auto}
 #sol-th-edit{margin-left:10px;font-size:12px}
 .chip{font:600 11px var(--mono);padding:2px 7px;border-radius:4px;background:var(--sonar-dim);color:var(--sonar)}
 .chip.stk{background:color-mix(in srgb,var(--stock) 15%,transparent);color:var(--stock)}
 .chips{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line)}
-.chipbtn{background:none;border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:12px;color:var(--muted);cursor:pointer}
+.chipbtn{background:none;border:1px solid var(--line);border-radius:4px;padding:3px 11px;font-size:12px;color:var(--muted);cursor:pointer}
 .chipbtn:hover{border-color:var(--sonar)}
 .chipbtn[aria-pressed="true"]{border-color:var(--sonar);color:var(--sonar);background:var(--sonar-dim)}
 .filterbar{padding:8px 16px;font-size:12px;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line)}
@@ -194,7 +187,7 @@ details.sig summary:hover .nm{color:var(--text)}
 .heads a:hover{color:var(--sonar)}
 .fine{font-size:12px;color:var(--muted);padding:12px 16px;margin:0;border-top:1px solid var(--line);max-width:110ch}
 
-details.settings{margin-top:24px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+details.settings{margin-top:24px;background:var(--surface);border:1px solid var(--line);border-radius:6px}
 details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
 .sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:18px;padding:0 16px 18px}
 .sgrid label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
@@ -206,7 +199,7 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
 .dhead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:center}
 .dhead img{width:56px;height:56px;border-radius:50%;background:var(--surface-2);object-fit:cover}
 .eyebrow{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.dhead h1{font:800 34px/1.1 var(--display);letter-spacing:-.02em;margin:4px 0 2px;overflow-wrap:anywhere}
+.dhead h1{font:600 28px/1.1 var(--body);margin:4px 0 2px;overflow-wrap:anywhere}
 .big{font:600 34px/1 var(--mono);font-variant-numeric:tabular-nums}
 .dhead.buy .big{color:var(--buy)}
 .dhead.sell .big{color:var(--sell)}
@@ -218,10 +211,10 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
 .links{display:flex;gap:6px 14px;flex-wrap:wrap;align-items:baseline;margin:0}
 .links a{text-decoration:none;border-bottom:1px dotted var(--faint)}
 .links a:hover{color:var(--sonar)}
-.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(190px,100%),1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(190px,100%),1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .fact{background:var(--surface);padding:12px 14px;min-width:0}
 .fact .v{font:500 15px var(--mono);font-variant-numeric:tabular-nums;margin-top:2px;overflow-wrap:anywhere}
-.addrs{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.addrs{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .arow{background:var(--surface);display:grid;grid-template-columns:100px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 14px}
 .arow code{font:12px var(--mono);overflow-wrap:anywhere}
 .arow .k{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
@@ -243,14 +236,14 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
   details.sig summary{grid-template-columns:52px minmax(0,1fr) auto}
   details.sig summary .pxv{display:none}
 }
-@media (prefers-reduced-motion: reduce){ .dot.live,.feed>li.new{animation:none} }
+@media (prefers-reduced-motion: reduce){ .feed>li.new{animation:none} }
 </style>
 </head>
 <body>
 <div class="wrap main">
 <header>
   <div class="brand">
-    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="14" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><path d="M16 16 L27 8" stroke="var(--sonar)" stroke-width="2" stroke-linecap="round"/><circle cx="22" cy="20" r="2.5" fill="var(--sonar)"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4v16M12 7v13M19 3v17" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="9" width="4" height="6" rx="1" fill="var(--sell)"/><rect x="10" y="11" width="4" height="5" rx="1" fill="var(--buy)"/><rect x="17" y="6" width="4" height="8" rx="1" fill="var(--buy)"/></svg>
     Whale Sonar <small>stocks · solana memes</small>
   </div>
   <div class="status">
@@ -293,13 +286,11 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
       <ul class="feed" id="sol-feed"><li class="empty">Finding high-volume meme pools…</li></ul>
     </div>
     <aside class="side">
-      <div class="scope"><canvas id="sonar" aria-label="Sonar view of whale trades from the last 15 minutes"></canvas></div>
-      <div class="legend"><span><i style="background:var(--buy)"></i>Meme buy</span><span><i style="background:var(--sell)"></i>Meme sell</span><span><i class="ring"></i>Stock block</span></div>
       <div class="tiles two">
         <div class="tile"><div class="k">Whale buys · 1h</div><div class="v pos" id="t-buys">0</div><div class="s" id="t-buys-s">$0 bought</div></div>
         <div class="tile"><div class="k">Whale sells · 1h</div><div class="v neg" id="t-sells">0</div><div class="s" id="t-sells-s">$0 sold</div></div>
         <div class="tile"><div class="k">Largest · 6h</div><div class="v" id="t-big">—</div><div class="s" id="t-big-s">no swaps yet</div></div>
-        <div class="tile"><div class="k">Pools on sonar</div><div class="v" id="t-pools">0</div><div class="s" id="t-pools-s">finding pools…</div></div>
+        <div class="tile"><div class="k">Pools tracked</div><div class="v" id="t-pools">0</div><div class="s" id="t-pools-s">finding pools…</div></div>
       </div>
       <div class="flow">
         <div class="flow-head"><span>Whale money · last hour</span><span id="flow-txt">—</span></div>
@@ -423,7 +414,6 @@ function dur(ms){
 }
 const ago = t => dur(Date.now() - t)+" ago";
 const short = a => a ? a.slice(0,4)+"…"+a.slice(-4) : "";
-function hash(str){ let h = 2166136261; for (const c of str){ h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
 function setStatus(id, cls, text){ const el = $(id); if (el) el.innerHTML = '<span class="dot '+cls+'"></span>'+esc(text); }
 function debounce(fn, ms){ let t = 0; return () => { if (!t) t = setTimeout(() => { t = 0; fn(); }, ms); }; }
 const isoDay = n => new Date(Date.now() - n*864e5).toISOString().slice(0,10);
@@ -433,7 +423,7 @@ const photonUrl = pool => "https://photon-sol.tinyastro.io/en/lp/"+pool;
 const walletUrl = w => "https://birdeye.so/solana/wallet-analyzer/"+w;
 const B58 = /^[1-9A-HJ-NP-Za-km-z]{32,90}$/;
 const DS = "https://api.dexscreener.com";
-const BRAND_SVG = '<svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="14" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><path d="M16 16 L27 8" stroke="var(--sonar)" stroke-width="2" stroke-linecap="round"/><circle cx="22" cy="20" r="2.5" fill="var(--sonar)"/></svg>';
+const BRAND_SVG = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4v16M12 7v13M19 3v17" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="9" width="4" height="6" rx="1" fill="var(--sell)"/><rect x="10" y="11" width="4" height="5" rx="1" fill="var(--buy)"/><rect x="17" y="6" width="4" height="8" rx="1" fill="var(--buy)"/></svg>';
 const fact = (k, v, cls) => '<div class="fact"><div class="k">'+esc(k)+'</div><div class="v '+(cls || "")+'">'+esc(v)+'</div></div>';
 
 // The feed is saved as compact rows so the trade tab can show a wallet's other swaps.
@@ -650,54 +640,7 @@ let isLeader = claimLeader();
 addEventListener("pagehide", () => { const l = store.get("leader", null); if (l && l.id === TAB) store.del("leader"); });
 addEventListener("storage", e => { if (e.key && /^ws:(key|watch|solTh|minVol|stkTh|extra)$/.test(e.key) && e.newValue !== e.oldValue) location.reload(); });
 
-// ---------- sonar ----------
-const pings = []; // {angle, t, usd, side:'buy'|'sell'|'stock'}
-function addPing(label, t, value, side){
-  if (Date.now() - t > 15*60*1000) return;
-  pings.push({angle:(hash(label) % 3600) / 3600 * Math.PI * 2, t, usd:value, side});
-  if (pings.length > 300) pings.splice(0, pings.length - 300);
-}
-const cv = $("sonar"), cx = cv.getContext("2d");
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-function drawSonar(now){
-  requestAnimationFrame(drawSonar);
-  if (cv.offsetParent === null) return; // tab hidden
-  const dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
-  if (cv.width !== Math.round(w*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
-  cx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  cx.clearRect(0, 0, w, h);
-  const r = Math.min(w, h)/2 - 6, ox = w/2, oy = h/2;
-  const C = {sonar:cssv("--sonar"), line:cssv("--line"), buy:cssv("--buy"), sell:cssv("--sell"), stock:cssv("--stock"), muted:cssv("--muted"), surface:cssv("--surface")};
-  cx.fillStyle = C.surface; cx.beginPath(); cx.arc(ox, oy, r, 0, Math.PI*2); cx.fill();
-  cx.strokeStyle = C.line; cx.lineWidth = 1;
-  for (let i = 1; i <= 4; i++){ cx.beginPath(); cx.arc(ox, oy, r*i/4, 0, Math.PI*2); cx.stroke(); }
-  for (let i = 0; i < 12; i++){ const a = i/12*Math.PI*2; cx.beginPath(); cx.moveTo(ox, oy); cx.lineTo(ox + Math.cos(a)*r, oy + Math.sin(a)*r); cx.stroke(); }
-  cx.fillStyle = C.muted; cx.font = "10px "+cssv("--mono");
-  ["4m","8m","11m","15m"].forEach((l, i) => { cx.fillText(l, ox + 4, oy - r*(i+1)/4 + 12); });
-  const sweep = reduce ? -Math.PI/4 : ((now/6000) % 1)*Math.PI*2 - Math.PI/2;
-  if (!reduce && cx.createConicGradient){
-    const g = cx.createConicGradient(sweep - 0.9, ox, oy);
-    g.addColorStop(0, "transparent"); g.addColorStop(0.143, C.sonar+"55"); g.addColorStop(0.144, "transparent");
-    cx.fillStyle = g; cx.beginPath(); cx.moveTo(ox, oy); cx.arc(ox, oy, r, sweep - 0.9, sweep); cx.closePath(); cx.fill();
-  }
-  cx.strokeStyle = C.sonar; cx.lineWidth = 1.5; cx.beginPath(); cx.moveTo(ox, oy); cx.lineTo(ox + Math.cos(sweep)*r, oy + Math.sin(sweep)*r); cx.stroke();
-  const horizon = 15*60*1000, t0 = Date.now();
-  for (const p of pings){
-    const age = t0 - p.t; if (age > horizon || age < -60000) continue;
-    const rr = Math.max(0.04, age/horizon) * r;
-    const x = ox + Math.cos(p.angle)*rr, y = oy + Math.sin(p.angle)*rr;
-    const size = Math.max(2.5, Math.min(16, Math.log10(Math.max(p.usd, 10))*3 - 8));
-    const d = ((sweep - p.angle) % (Math.PI*2) + Math.PI*2) % (Math.PI*2);
-    const glow = reduce ? 0.6 : Math.max(0.35, 1 - d/(Math.PI*2)*1.3);
-    cx.globalAlpha = glow * (1 - age/horizon*0.6);
-    const col = p.side === "buy" ? C.buy : p.side === "sell" ? C.sell : C.stock;
-    if (p.side === "stock"){ cx.strokeStyle = col; cx.lineWidth = 2; cx.beginPath(); cx.arc(x, y, size, 0, Math.PI*2); cx.stroke(); }
-    else { cx.fillStyle = col; cx.beginPath(); cx.arc(x, y, size, 0, Math.PI*2); cx.fill(); }
-    cx.globalAlpha = 1;
-  }
-}
-requestAnimationFrame(drawSonar);
 
 // ---------- Solana: find high-volume meme pools, watch where money is moving, pull whale swaps ----------
 const GT = "https://api.geckoterminal.com/api/v2";
@@ -915,7 +858,6 @@ function ingest(pool, list, wasScanned){
       mcap:pool.mcap, liq:pool.liq, created:pool.created, fresh:wasScanned, seen:now};
     if (!tr.t || now - tr.t > KEEP_MS) continue;
     solTrades.set(t.id, tr); added++;
-    addPing(pool.sym, tr.t, tr.usd, tr.kind);
     if (now - tr.t < 30*60e3) pool.lastHit = now;
   }
   if (added){ pool.hits += added; renderSolSoon(); }
@@ -940,7 +882,6 @@ function loadFeed(markFresh){
   for (const r of readFeedRows()){
     if (now - r.t > KEEP_MS || solTrades.has(r.id)) continue;
     solTrades.set(r.id, {...r, fresh:!!markFresh, seen:now});
-    addPing(r.sym, r.t, r.usd, r.kind);
   }
 }
 
@@ -1083,7 +1024,7 @@ function connectStocks(){
       if (n < S.stkTh) continue;
       const dir = prev == null || tr.p === prev ? "flat" : tr.p > prev ? "up" : "down";
       blocks.unshift({s:tr.s, p:tr.p, v:tr.v, n, t:tr.t, dir, c:(tr.c || []).join(",")});
-      addPing(tr.s, tr.t, n, "stock"); hit = true;
+      hit = true;
     }
     if (hit){ blocks = blocks.slice(0, 300); renderStocksSoon(); renderSignalsSoon(); saveBlocksSoon(); }
     else if (stkView === "movers") renderStocksSoon();
