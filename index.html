@@ -4,9 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Whale Sonar</title>
+<script>if (/[?&]view=trade(&|$)/.test(location.search)) document.documentElement.classList.add("tradeview");</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
 :root{
   color-scheme: dark;
@@ -37,106 +38,215 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0}
-body{background:var(--ground);color:var(--text);font:14px/1.5 var(--body);padding:0 16px 48px;}
+body{background:var(--ground);color:var(--text);font:14px/1.5 var(--body);padding:0 16px 48px}
 a{color:inherit}
 .wrap{max-width:1320px;margin:0 auto}
-header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:20px 16px;border-bottom:1px solid var(--line)}
-.brand{font:800 28px/1 var(--display);letter-spacing:-.02em;display:flex;align-items:center;gap:10px}
-.brand svg{width:30px;height:30px}
+.tradeview .main{display:none}
+.sm{font-size:12px}
+.muted{color:var(--muted)}
+.faint{color:var(--faint)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.pos{color:var(--buy)}
+.neg{color:var(--sell)}
+header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:20px 12px}
+.detail-head{border-bottom:1px solid var(--line);padding-bottom:16px}
+.brand{font:800 28px/1 var(--display);letter-spacing:-.02em;display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand svg{width:30px;height:30px;flex:none}
 .brand small{font:500 12px var(--body);color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-left:4px}
-.status{display:flex;gap:14px;margin-left:auto;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.status{display:flex;gap:14px;margin-left:auto;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--muted)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);margin-right:6px;vertical-align:1px}
-.dot.live{background:var(--buy);box-shadow:0 0 0 0 var(--buy);animation:pulse 2s infinite}
+.dot.live{background:var(--buy);animation:pulse 2s infinite}
 .dot.warn{background:var(--stock)}
 .dot.err{background:var(--sell)}
 @keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--buy) 60%,transparent)}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
 button,input,select{font:inherit;color:inherit}
-.btn{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer}
+.btn{display:inline-block;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer;text-decoration:none}
 .btn:hover{border-color:var(--sonar)}
 .btn.primary{background:var(--sonar);color:var(--ground);border-color:var(--sonar);font-weight:600}
 :focus-visible{outline:2px solid var(--sonar);outline-offset:2px}
 
-.hero{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:24px;padding-block:24px}
-.scope{position:relative;aspect-ratio:1;max-width:100%}
+/* tabs */
+.maintabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.maintabs::-webkit-scrollbar{display:none}
+.mtab{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-1px;padding:12px 14px 11px;font:700 17px/1 var(--display);letter-spacing:-.01em;color:var(--muted);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:8px}
+.mtab:hover{color:var(--text)}
+.mtab[aria-selected="true"]{color:var(--text);border-bottom-color:var(--sonar)}
+.badge{font:600 11px var(--mono);letter-spacing:0;padding:2px 7px;border-radius:999px;background:var(--sonar-dim);color:var(--sonar)}
+.badge:empty{display:none}
+.tabpanel{padding-top:20px}
+.split{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start}
+.side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.subtabs{display:flex;gap:4px;flex-wrap:wrap}
+.subtab{background:none;border:1px solid transparent;border-radius:6px;padding:5px 10px;cursor:pointer;color:var(--muted);font-weight:600}
+.subtab:hover{color:var(--text)}
+.subtab[aria-selected="true"]{color:var(--text);background:var(--surface-2);border-color:var(--line)}
+.subhead{padding:14px 16px 4px;margin:0}
+
+/* sidebar */
+.scope{position:relative;aspect-ratio:1;width:100%;max-width:360px;margin:0 auto}
 .scope canvas{width:100%;height:100%;display:block}
-.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px;justify-content:center}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);justify-content:center;margin-top:-6px}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:0}
 .legend i.ring{background:transparent;border:2px solid var(--stock)}
-.side{display:flex;flex-direction:column;gap:18px;min-width:0}
 .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.tile{background:var(--surface);padding:14px 16px}
-.tile .k{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.tiles.two{grid-template-columns:repeat(2,1fr)}
+.stk-tiles{margin-bottom:20px}
+.tile{background:var(--surface);padding:14px 16px;min-width:0}
+.tile .k,.fact .k{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .tile .v{font:600 22px/1.25 var(--mono);font-variant-numeric:tabular-nums;margin-top:4px;overflow-wrap:anywhere}
 .tile .s{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.flow{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.flow,.whales{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
 .flow-head{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);gap:8px;flex-wrap:wrap}
 .bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surface-2);margin-top:10px}
 .bar .b{background:var(--buy);transition:width .6s}
 .bar .s{background:var(--sell);transition:width .6s}
-.whales{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
 h2{font:800 18px/1.2 var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
 h3{font:600 12px var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}
-.wl{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:4px 20px}
-.wl li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:baseline;padding:5px 0;border-bottom:1px dashed var(--line);font-size:13px;cursor:pointer}
+.wl{list-style:none;margin:0;padding:0;display:grid}
+.wl li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:5px 0;border-bottom:1px dashed var(--line);font-size:13px;cursor:pointer}
+.wl li:last-child{border-bottom:0}
+.wl li>span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wl li.empty{display:block;border:0;cursor:default}
 .wl li:hover .addr{color:var(--sonar)}
 .wl .rank{font:600 11px var(--mono);color:var(--faint)}
 .addr{font-family:var(--mono);font-size:12px}
 .wl .net{font:600 12px var(--mono);font-variant-numeric:tabular-nums}
-.muted{color:var(--muted)}
-.empty{color:var(--muted);font-size:13px;padding:18px 0}
+.empty{color:var(--muted);font-size:13px}
 
-.cols{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+/* panels and feeds */
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;min-width:0}
-.panel-head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.panel-head{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .panel-head .meta{font-size:12px;color:var(--muted);margin-left:auto}
 .chip{font:600 11px var(--mono);padding:2px 7px;border-radius:4px;background:var(--sonar-dim);color:var(--sonar)}
 .chip.stk{background:color-mix(in srgb,var(--stock) 15%,transparent);color:var(--stock)}
-.tabs{display:flex;gap:4px;padding:8px 16px 0;border-bottom:1px solid var(--line)}
-.tab{background:none;border:none;border-bottom:2px solid transparent;padding:6px 10px;cursor:pointer;color:var(--muted);font-weight:500}
-.tab[aria-selected="true"]{color:var(--text);border-color:var(--stock)}
-.filterbar{padding:8px 16px;font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--line)}
-.feed{list-style:none;margin:0;padding:0;max-height:640px;overflow-y:auto}
-.feed li{display:grid;grid-template-columns:4px 1fr auto;gap:0 12px;padding:10px 16px 10px 0;border-bottom:1px solid var(--line)}
-.feed li.new{animation:flash 1.6s ease-out}
+.chips{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line)}
+.chipbtn{background:none;border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:12px;color:var(--muted);cursor:pointer}
+.chipbtn:hover{border-color:var(--sonar)}
+.chipbtn[aria-pressed="true"]{border-color:var(--sonar);color:var(--sonar);background:var(--sonar-dim)}
+.filterbar{padding:8px 16px;font-size:12px;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.filterbar .btn{padding:2px 8px;margin-left:auto}
+.feed{list-style:none;margin:0;padding:0;max-height:min(78vh,900px);overflow-y:auto}
+.feed.hot{max-height:none;overflow:visible;border-bottom:1px solid var(--line)}
+.feed>li{border-bottom:1px solid var(--line)}
+.feed>li:last-child{border-bottom:0}
+.feed>li.empty{padding:18px 16px}
+.feed>li.new{animation:flash 1.6s ease-out}
 @keyframes flash{from{background:var(--sonar-dim)}to{background:transparent}}
-.feed .stripe{border-radius:0 2px 2px 0}
-.feed .buy .stripe,.feed li.buy .stripe{background:var(--buy)}
-.feed li.sell .stripe{background:var(--sell)}
-.feed li.up .stripe{background:var(--buy)}
-.feed li.down .stripe{background:var(--sell)}
-.feed li.flat .stripe{background:var(--stock)}
-.feed .line1{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
-.feed .sym{font:600 14px var(--body)}
-.feed .kind{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:3px}
+.rowlink{display:grid;grid-template-columns:4px 1fr auto;gap:0 12px;padding:10px 16px 10px 0;color:inherit;text-decoration:none}
+.rowlink:hover{background:var(--surface-2)}
+.rowlink:hover .sym{color:var(--sonar)}
+.stripe{border-radius:0 2px 2px 0;background:var(--faint)}
+.buy .stripe,.up .stripe{background:var(--buy)}
+.sell .stripe,.down .stripe{background:var(--sell)}
+.flat .stripe{background:var(--stock)}
+.line1{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.sym{font:600 14px var(--body)}
+.kind{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:3px}
 .buy .kind,.up .kind{color:var(--buy);background:color-mix(in srgb,var(--buy) 14%,transparent)}
 .sell .kind,.down .kind{color:var(--sell);background:color-mix(in srgb,var(--sell) 14%,transparent)}
 .flat .kind{color:var(--stock);background:color-mix(in srgb,var(--stock) 14%,transparent)}
-.feed .line2{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;margin-top:2px}
-.feed .line2 a{text-decoration:none;border-bottom:1px dotted var(--faint)}
-.feed .line2 a:hover{color:var(--sonar)}
-.feed .usd{font:600 15px var(--mono);font-variant-numeric:tabular-nums;text-align:right}
-.feed .ago{font-size:11px;color:var(--muted);text-align:right}
+.tag{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:0 5px;border-radius:3px;border:1px solid color-mix(in srgb,var(--stock) 50%,transparent);color:var(--stock)}
+.line2{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;margin-top:2px}
+.usd{font:600 15px var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.ago{font-size:11px;color:var(--muted);text-align:right}
 .tier-3 .usd{color:var(--sonar)}
 .setup{padding:20px 16px;display:flex;flex-direction:column;gap:10px;font-size:13px}
 .setup ol{margin:0;padding-left:20px;color:var(--muted)}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 input[type=text],input[type=password],input[type=number]{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:6px 10px;min-width:0;flex:1}
+
+/* signals */
+.sig-top{display:grid;grid-template-columns:1fr 1fr 1.1fr;gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.sig-top>div{background:var(--surface);padding:14px 16px;min-width:0}
+.lead{list-style:none;margin:0;padding:0}
+.lead li{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.lead li.empty{display:block;border:0}
+.heat{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.heat li{display:grid;grid-template-columns:minmax(0,120px) 1fr 40px;gap:10px;align-items:center;font-size:12px}
+.heat li>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.heat li>span:last-child{text-align:right}
+.diverge{position:relative;display:block;height:8px;background:var(--surface-2);border-radius:4px}
+.diverge::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--faint)}
+.diverge i{position:absolute;top:0;bottom:0;border-radius:4px}
+.markets{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:1px;background:var(--line)}
+.market{background:var(--surface);padding:12px 16px 14px;min-width:0}
+.mhead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.mhead h3{margin:0}
+details.sig{border-bottom:1px dashed var(--line)}
+details.sig:last-child{border-bottom:0}
+details.sig summary{list-style:none;display:grid;grid-template-columns:52px minmax(0,1fr) auto auto;gap:10px;align-items:baseline;padding:7px 0;cursor:pointer}
+details.sig summary::-webkit-details-marker{display:none}
+details.sig summary:hover .nm{color:var(--text)}
+.tk{font:600 13px var(--mono);color:var(--text);text-decoration:none;border-bottom:1px dotted var(--faint);justify-self:start}
+.tk:hover{color:var(--sonar);border-color:var(--sonar)}
+.nm{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pxv{font:500 12px var(--mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.pxv b{font-weight:600}
+.pill{font:600 11px var(--mono);padding:2px 7px;border-radius:4px;white-space:nowrap;text-align:center}
+.pill.bull{color:var(--buy);background:color-mix(in srgb,var(--buy) 14%,transparent)}
+.pill.bear{color:var(--sell);background:color-mix(in srgb,var(--sell) 14%,transparent)}
+.pill.neu{color:var(--muted);background:var(--surface-2)}
+.why{padding:2px 0 12px;display:grid;gap:6px;font-size:12px}
+.comp{display:grid;grid-template-columns:84px 80px minmax(0,1fr);gap:10px;align-items:center;color:var(--muted)}
+.heads{list-style:none;margin:4px 0 2px;padding:0;display:grid;gap:5px}
+.heads a{color:var(--text);text-decoration:none;border-bottom:1px dotted var(--faint)}
+.heads a:hover{color:var(--sonar)}
+.fine{font-size:12px;color:var(--muted);padding:12px 16px;margin:0;border-top:1px solid var(--line);max-width:110ch}
+
 details.settings{margin-top:24px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
 details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
-.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;padding:0 16px 18px}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:18px;padding:0 16px 18px}
 .sgrid label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
 .note{font-size:12px;color:var(--muted);margin-top:24px;max-width:75ch}
-@media (max-width:900px){
-  .hero,.cols{grid-template-columns:1fr}
-  .scope{max-width:360px;margin:0 auto;width:100%}
-  .tiles{grid-template-columns:repeat(2,1fr)}
-  .wl{grid-template-columns:1fr}
+
+/* trade tab */
+.detail{max-width:860px;margin:0 auto;padding-block:24px 48px;display:grid;gap:24px}
+.detail section{min-width:0}
+.dhead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:center}
+.dhead img{width:56px;height:56px;border-radius:50%;background:var(--surface-2);object-fit:cover}
+.eyebrow{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dhead h1{font:800 34px/1.1 var(--display);letter-spacing:-.02em;margin:4px 0 2px;overflow-wrap:anywhere}
+.big{font:600 34px/1 var(--mono);font-variant-numeric:tabular-nums}
+.dhead.buy .big{color:var(--buy)}
+.dhead.sell .big{color:var(--sell)}
+.actions{display:flex;gap:12px;flex-wrap:wrap}
+.cta{display:inline-flex;align-items:center;gap:8px;padding:12px 18px;border-radius:8px;font-weight:600;text-decoration:none;border:1px solid var(--line);background:var(--surface-2)}
+.cta.photon{background:var(--sonar);color:var(--ground);border-color:var(--sonar)}
+.cta.track{border-color:var(--sonar);color:var(--sonar)}
+.cta:hover{filter:brightness(1.08)}
+.links{display:flex;gap:6px 14px;flex-wrap:wrap;align-items:baseline;margin:0}
+.links a{text-decoration:none;border-bottom:1px dotted var(--faint)}
+.links a:hover{color:var(--sonar)}
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(190px,100%),1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.fact{background:var(--surface);padding:12px 14px;min-width:0}
+.fact .v{font:500 15px var(--mono);font-variant-numeric:tabular-nums;margin-top:2px;overflow-wrap:anywhere}
+.addrs{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.arow{background:var(--surface);display:grid;grid-template-columns:100px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 14px}
+.arow code{font:12px var(--mono);overflow-wrap:anywhere}
+.arow .k{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.arow .acts{display:flex;gap:10px;align-items:center;font-size:12px}
+.copy{font-size:12px;padding:3px 9px}
+
+@media (max-width:980px){
+  .split{grid-template-columns:1fr}
+  .sig-top{grid-template-columns:1fr}
 }
-@media (prefers-reduced-motion: reduce){ .dot.live,.feed li.new{animation:none} }
+@media (max-width:700px){
+  .tiles{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:560px){
+  .mtab{font-size:15px;padding:12px 10px 10px}
+  .dhead{grid-template-columns:auto minmax(0,1fr)}
+  .dhead .big{grid-column:1/-1}
+  .arow{grid-template-columns:1fr}
+  details.sig summary{grid-template-columns:52px minmax(0,1fr) auto}
+  details.sig summary .pxv{display:none}
+}
+@media (prefers-reduced-motion: reduce){ .dot.live,.feed>li.new{animation:none} }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap main">
 <header>
   <div class="brand">
     <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="14" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><path d="M16 16 L27 8" stroke="var(--sonar)" stroke-width="2" stroke-linecap="round"/><circle cx="22" cy="20" r="2.5" fill="var(--sonar)"/></svg>
@@ -149,178 +259,465 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
   </div>
 </header>
 
-<section class="hero">
-  <div>
-    <div class="scope"><canvas id="sonar" aria-label="Sonar view of recent whale trades"></canvas></div>
-    <div class="legend"><span><i style="background:var(--buy)"></i>Meme buy</span><span><i style="background:var(--sell)"></i>Meme sell</span><span><i class="ring"></i>Stock block</span></div>
-  </div>
-  <div class="side">
-    <div class="tiles">
-      <div class="tile"><div class="k">Meme whales · 1h</div><div class="v" id="t-count">0</div><div class="s" id="t-count-s">trades over threshold</div></div>
-      <div class="tile"><div class="k">Largest meme swap</div><div class="v" id="t-big">—</div><div class="s" id="t-big-s">last 24h scanned</div></div>
-      <div class="tile"><div class="k">Stock blocks · today</div><div class="v" id="t-blocks">0</div><div class="s" id="t-blocks-s">prints over threshold</div></div>
-      <div class="tile"><div class="k">Pools on sonar</div><div class="v" id="t-pools">0</div><div class="s" id="t-pools-s">trending on Solana</div></div>
+<nav class="maintabs" id="maintabs" role="tablist" aria-label="Sections">
+  <button class="mtab" role="tab" type="button" id="mt-memes" data-tab="memes" aria-controls="p-memes" aria-selected="true">Meme coins <span class="badge" id="b-memes"></span></button>
+  <button class="mtab" role="tab" type="button" id="mt-stocks" data-tab="stocks" aria-controls="p-stocks" aria-selected="false">Stock whales <span class="badge" id="b-stocks"></span></button>
+  <button class="mtab" role="tab" type="button" id="mt-signals" data-tab="signals" aria-controls="p-signals" aria-selected="false">Stock signals <span class="badge" id="b-signals"></span></button>
+</nav>
+
+<section class="tabpanel" id="p-memes" role="tabpanel" aria-labelledby="mt-memes">
+  <div class="split">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="subtabs" id="sol-views" role="tablist" aria-label="Meme coin views">
+          <button class="subtab" type="button" role="tab" data-view="buys">New buys</button>
+          <button class="subtab" type="button" role="tab" data-view="big">Biggest volume</button>
+          <button class="subtab" type="button" role="tab" data-view="all">All swaps</button>
+        </div>
+        <span class="meta" id="sol-meta"></span>
+      </div>
+      <div class="chips" id="mc-chips" role="group" aria-label="Filter by market cap">
+        <button class="chipbtn" type="button" data-band="all">All caps</button>
+        <button class="chipbtn" type="button" data-band="micro">Under $1M</button>
+        <button class="chipbtn" type="button" data-band="small">$1M–$10M</button>
+        <button class="chipbtn" type="button" data-band="mid">$10M–$100M</button>
+        <button class="chipbtn" type="button" data-band="large">$100M+</button>
+      </div>
+      <div class="filterbar" id="sol-filter" hidden>Showing wallet <span class="addr" id="sol-filter-addr"></span><a id="sol-filter-track" href="https://birdeye.so" target="_blank" rel="noopener">Track this wallet ↗</a><button class="btn" id="sol-clear" type="button">Show all</button></div>
+      <div id="hot-wrap" hidden>
+        <h3 class="subhead">Most volume right now · last 5 minutes</h3>
+        <ul class="feed hot" id="hot-feed"></ul>
+        <h3 class="subhead">Largest whale swaps · last 6 hours</h3>
+      </div>
+      <ul class="feed" id="sol-feed"><li class="empty">Finding high-volume meme pools…</li></ul>
     </div>
-    <div class="flow">
-      <div class="flow-head"><span>Meme whale flow · last hour</span><span id="flow-txt">—</span></div>
-      <div class="bar"><div class="b" id="flow-b" style="width:50%"></div><div class="s" id="flow-s" style="width:50%"></div></div>
-    </div>
-    <div class="whales">
-      <h3>Biggest Solana wallets on the feed</h3>
-      <ul class="wl" id="wallets"><li class="empty" style="grid-column:1/-1;display:block;border:0;cursor:default">Scanning trending pools…</li></ul>
-    </div>
+    <aside class="side">
+      <div class="scope"><canvas id="sonar" aria-label="Sonar view of whale trades from the last 15 minutes"></canvas></div>
+      <div class="legend"><span><i style="background:var(--buy)"></i>Meme buy</span><span><i style="background:var(--sell)"></i>Meme sell</span><span><i class="ring"></i>Stock block</span></div>
+      <div class="tiles two">
+        <div class="tile"><div class="k">Whale buys · 1h</div><div class="v pos" id="t-buys">0</div><div class="s" id="t-buys-s">$0 bought</div></div>
+        <div class="tile"><div class="k">Whale sells · 1h</div><div class="v neg" id="t-sells">0</div><div class="s" id="t-sells-s">$0 sold</div></div>
+        <div class="tile"><div class="k">Largest · 6h</div><div class="v" id="t-big">—</div><div class="s" id="t-big-s">no swaps yet</div></div>
+        <div class="tile"><div class="k">Pools on sonar</div><div class="v" id="t-pools">0</div><div class="s" id="t-pools-s">finding pools…</div></div>
+      </div>
+      <div class="flow">
+        <div class="flow-head"><span>Whale money · last hour</span><span id="flow-txt">—</span></div>
+        <div class="bar"><div class="b" id="flow-b" style="width:50%"></div><div class="s" id="flow-s" style="width:50%"></div></div>
+      </div>
+      <div class="whales">
+        <h3>Biggest wallets · 6h</h3>
+        <ul class="wl" id="wallets"><li class="empty">Scanning meme pools…</li></ul>
+      </div>
+    </aside>
   </div>
 </section>
 
-<section class="cols">
-  <div class="panel">
-    <div class="panel-head"><span class="chip">SOL</span><h2>Meme coin whale swaps</h2><span class="meta" id="sol-meta">≥ $5K</span></div>
-    <div class="filterbar" id="sol-filter" hidden>Showing wallet <span class="addr" id="sol-filter-addr"></span><button class="btn" id="sol-clear" style="padding:2px 8px;margin-left:auto">Show all</button></div>
-    <ul class="feed" id="sol-feed"><li class="empty" style="display:block;padding:18px 16px">Finding trending meme pools and pulling whale swaps. The first scan takes about a minute.</li></ul>
+<section class="tabpanel" id="p-stocks" role="tabpanel" aria-labelledby="mt-stocks" hidden>
+  <div class="tiles stk-tiles" id="stk-tiles">
+    <div class="tile"><div class="k">Block prints · today</div><div class="v" id="s-count">0</div><div class="s">prints over your threshold</div></div>
+    <div class="tile"><div class="k">On upticks</div><div class="v pos" id="s-up">$0</div><div class="s">traded above the last price</div></div>
+    <div class="tile"><div class="k">On downticks</div><div class="v neg" id="s-down">$0</div><div class="s">traded below the last price</div></div>
+    <div class="tile"><div class="k">Biggest print</div><div class="v" id="s-big">—</div><div class="s" id="s-big-s">today</div></div>
   </div>
   <div class="panel">
-    <div class="panel-head"><span class="chip stk">NYSE · NASDAQ</span><h2>Stock whales</h2><span class="meta" id="stk-meta">≥ $1M prints</span></div>
-    <div class="tabs" role="tablist">
-      <button class="tab" role="tab" id="tab-blocks" aria-selected="true">Live block prints</button>
-      <button class="tab" role="tab" id="tab-insider" aria-selected="false">Insider buys &amp; sells</button>
+    <div class="panel-head">
+      <div class="subtabs" id="stk-views" role="tablist" aria-label="Stock views">
+        <button class="subtab" type="button" role="tab" data-view="latest">Latest prints</button>
+        <button class="subtab" type="button" role="tab" data-view="biggest">Biggest prints</button>
+        <button class="subtab" type="button" role="tab" data-view="insider">Insider trades</button>
+      </div>
+      <span class="meta" id="stk-meta"></span>
     </div>
     <div id="stk-setup" class="setup">
-      <strong>Connect a free Finnhub key to stream stock trades</strong>
+      <strong>Connect a free Finnhub key for stock trades and signals</strong>
       <ol>
         <li>Sign up at <a href="https://finnhub.io/register" target="_blank" rel="noopener">finnhub.io/register</a>. It's free and doesn't need a card.</li>
-        <li>Copy the API key from your dashboard and paste it here. It stays in this browser only.</li>
+        <li>Copy the API key from your Finnhub dashboard and paste it here. It's saved only in this browser.</li>
       </ol>
-      <div class="row"><input type="password" id="key-inline" placeholder="Finnhub API key" autocomplete="off"><button class="btn primary" id="key-save-inline">Connect</button></div>
+      <div class="row"><input type="password" id="key-inline" placeholder="Finnhub API key" autocomplete="off"><button class="btn primary" id="key-save-inline" type="button">Connect</button></div>
     </div>
     <ul class="feed" id="stk-feed" hidden></ul>
-    <ul class="feed" id="ins-feed" hidden></ul>
+  </div>
+</section>
+
+<section class="tabpanel" id="p-signals" role="tabpanel" aria-labelledby="mt-signals" hidden>
+  <div class="panel">
+    <div class="panel-head"><span class="chip stk">SIGNALS</span><h2>Stock signals by market</h2><span class="meta" id="sig-meta">Needs a Finnhub key</span></div>
+    <div class="setup" id="sig-setup">
+      <strong>Signals use the same free Finnhub key as the stock feed</strong>
+      <span class="muted">Add it in the Stock whales tab. The first load takes about 3 minutes, then everything refreshes on its own.</span>
+      <div><button class="btn primary" id="sig-add-key" type="button">Add Finnhub key</button></div>
+    </div>
+    <div id="sig-body" hidden>
+      <div class="sig-top">
+        <div><h3>Strongest bullish</h3><ol class="lead" id="sig-bull"></ol></div>
+        <div><h3>Strongest bearish</h3><ol class="lead" id="sig-bear"></ol></div>
+        <div><h3>Markets, strongest first</h3><ul class="heat" id="sig-heat"></ul></div>
+      </div>
+      <div class="markets" id="sig-markets"></div>
+      <p class="fine">Each score runs from −100 to +100 and blends five inputs: analyst ratings (30%), the tone of the last 3 days of headlines (25%), today's block prints (25%), insider buying and selling over 90 days (10%) and today's price move (10%). Headline tone comes from simple keyword matching, so treat it as rough. Click a row to see what drove its score, or a ticker to open it on Robinhood. This is an automated screen of public data, not financial advice.</p>
+    </div>
   </div>
 </section>
 
 <details class="settings" id="settings">
-  <summary>Settings: thresholds, watchlist, extra pools</summary>
+  <summary>Settings: thresholds, watchlist, extra coins</summary>
   <div class="sgrid">
-    <label>Solana whale threshold (USD per swap)
-      <input type="number" id="sol-th" min="500" step="500">
-    </label>
-    <label>Stock block threshold (USD notional per print)
-      <input type="number" id="stk-th" min="50000" step="50000">
-    </label>
-    <label>Stock watchlist (comma separated, max 50)
-      <input type="text" id="watch">
-    </label>
-    <label>Finnhub API key
-      <div class="row"><input type="password" id="key" autocomplete="off"><button class="btn" id="key-clear">Clear</button></div>
-    </label>
-    <label>Watch an extra Solana token (mint address)
-      <div class="row"><input type="text" id="extra" placeholder="e.g. DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"><button class="btn" id="extra-add">Add</button></div>
-      <span id="extra-msg"></span>
-    </label>
+    <label for="sol-th">Solana whale size (USD per swap)<input type="number" id="sol-th" min="500" step="500"></label>
+    <label for="min-vol">Only scan meme pools trading at least (USD per 24h)<input type="number" id="min-vol" min="10000" step="10000"></label>
+    <label for="stk-th">Stock block size (USD per print)<input type="number" id="stk-th" min="50000" step="50000"></label>
+    <label for="watch">Stock watchlist (comma separated, up to 50)<input type="text" id="watch"></label>
+    <label for="key">Finnhub API key<span class="row"><input type="password" id="key" autocomplete="off"><button class="btn" id="key-clear" type="button">Clear</button></span></label>
+    <label for="extra">Always scan this Solana token (mint address)<span class="row"><input type="text" id="extra" placeholder="e.g. DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"><button class="btn" id="extra-add" type="button">Add</button></span><span id="extra-msg"></span></label>
   </div>
-  <div class="row" style="padding:0 16px 18px"><button class="btn primary" id="save">Apply settings</button></div>
+  <div class="row" style="padding:0 16px 18px"><button class="btn primary" id="save" type="button">Apply settings</button><span class="muted sm" id="save-msg"></span></div>
 </details>
 
-<p class="note">Solana swaps come from GeckoTerminal. The site scans the top trending Solana pools one at a time to stay under the free rate limit, so a pool refreshes about once a minute. Stock prints come from Finnhub's live trade stream. Trades don't say who bought or sold, so each print is tagged with the tick test: uptick means it traded above the last price, which suggests a buyer. Insider trades come from SEC Form 4 filings. None of this is financial advice.</p>
+<p class="note">Every 15 seconds the site checks 5-minute trading volume on every meme pool it tracks (from DexScreener), then pulls whale swaps from the pools where the most money is moving (from GeckoTerminal, which allows about 30 requests a minute). New pools come from GeckoTerminal's trending, new and top lists plus DexScreener's boosted and newly listed tokens; only pools with at least your minimum 24h volume and $10K of liquidity are tracked. Click any swap to open its details in a new tab. Stock prints, quotes, news, analyst ratings and insider filings come from Finnhub, and each print is tagged with the tick test because trades don't say who bought or sold. Extra Whale Sonar tabs mirror the first one instead of making their own requests. None of this is financial advice.</p>
 </div>
 
 <script>
 (() => {
 "use strict";
-// ---------- storage & settings ----------
-const store = {
-  get(k, d){ try{ const v = localStorage.getItem("ws:"+k); return v==null ? d : JSON.parse(v); }catch{ return d; } },
-  set(k, v){ try{ localStorage.setItem("ws:"+k, JSON.stringify(v)); }catch{} }
-};
-const S = {
-  solTh: store.get("solTh", 5000),
-  stkTh: store.get("stkTh", 1000000),
-  watch: store.get("watch", ["SPY","QQQ","NVDA","TSLA","AAPL","MSFT","AMZN","META","AMD","GOOGL","PLTR","COIN","MSTR","IWM","AVGO"]),
-  key: store.get("key", ""),
-  extra: store.get("extra", [])
-};
+// ---------- shared helpers ----------
 const $ = id => document.getElementById(id);
-const GT = "https://api.geckoterminal.com/api/v2";
-const SKIP_MINTS = new Set(["So11111111111111111111111111111111111111112","EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"]);
-
-// ---------- helpers ----------
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem("ws:"+k); return v == null ? d : JSON.parse(v); }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem("ws:"+k, JSON.stringify(v)); }catch{} },
+  del(k){ try{ localStorage.removeItem("ws:"+k); }catch{} }
+};
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const clamp = (v, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, v));
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function usd(n){
+  if (n == null || !isFinite(n)) return "—";
+  const a = Math.abs(n), s = n < 0 ? "−" : "";
+  if (a >= 1e9) return s+"$"+(a/1e9).toFixed(2)+"B";
+  if (a >= 1e6) return s+"$"+(a/1e6).toFixed(2)+"M";
+  if (a >= 1e3) return s+"$"+(a/1e3).toFixed(1)+"K";
+  return s+"$"+a.toFixed(0);
+}
+function num(n){
+  if (n == null || !isFinite(n)) return "—";
   const a = Math.abs(n);
-  if (a >= 1e9) return "$" + (n/1e9).toFixed(2) + "B";
-  if (a >= 1e6) return "$" + (n/1e6).toFixed(2) + "M";
-  if (a >= 1e3) return "$" + (n/1e3).toFixed(1) + "K";
-  return "$" + n.toFixed(0);
+  if (a >= 1e9) return (n/1e9).toFixed(2)+"B";
+  if (a >= 1e6) return (n/1e6).toFixed(2)+"M";
+  if (a >= 1e3) return (n/1e3).toFixed(1)+"K";
+  return n.toLocaleString(undefined, {maximumFractionDigits:2});
 }
-function num(n){ const a=Math.abs(n); if(a>=1e9)return (n/1e9).toFixed(2)+"B"; if(a>=1e6)return (n/1e6).toFixed(2)+"M"; if(a>=1e3)return (n/1e3).toFixed(1)+"K"; return n.toLocaleString(undefined,{maximumFractionDigits:2}); }
-function ago(t){
-  const s = Math.max(0, (Date.now()-t)/1000);
-  if (s < 60) return Math.floor(s)+"s ago";
-  if (s < 3600) return Math.floor(s/60)+"m ago";
-  if (s < 86400) return Math.floor(s/3600)+"h ago";
-  return Math.floor(s/86400)+"d ago";
+function fmtPx(p){
+  if (!p || !isFinite(p)) return "—";
+  if (p >= 1) return "$"+p.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:4});
+  if (p >= 0.01) return "$"+p.toFixed(4);
+  return "$"+p.toPrecision(3);
 }
+const pct = (v, d = 1) => v == null || !isFinite(v) ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "")+Math.abs(v).toFixed(d)+"%";
+function dur(ms){
+  const s = Math.max(0, ms/1000);
+  if (s < 60) return Math.floor(s)+"s";
+  if (s < 3600) return Math.floor(s/60)+"m";
+  if (s < 86400) return Math.floor(s/3600)+"h";
+  return Math.floor(s/86400)+"d";
+}
+const ago = t => dur(Date.now() - t)+" ago";
 const short = a => a ? a.slice(0,4)+"…"+a.slice(-4) : "";
-function hash(str){ let h=2166136261; for(const c of str){ h^=c.charCodeAt(0); h=Math.imul(h,16777619); } return (h>>>0); }
-function setStatus(id, cls, text){ const el=$(id); el.innerHTML = '<span class="dot '+cls+'"></span>'+esc(text); }
+function hash(str){ let h = 2166136261; for (const c of str){ h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function setStatus(id, cls, text){ const el = $(id); if (el) el.innerHTML = '<span class="dot '+cls+'"></span>'+esc(text); }
+function debounce(fn, ms){ let t = 0; return () => { if (!t) t = setTimeout(() => { t = 0; fn(); }, ms); }; }
+const isoDay = n => new Date(Date.now() - n*864e5).toISOString().slice(0,10);
+const nyDay = (t = Date.now()) => new Date(t).toLocaleDateString("en-CA", {timeZone:"America/New_York"});
+const rh = s => "https://robinhood.com/us/en/stocks/"+encodeURIComponent(s)+"/";
+const photonUrl = pool => "https://photon-sol.tinyastro.io/en/lp/"+pool;
+const walletUrl = w => "https://birdeye.so/solana/wallet-analyzer/"+w;
+const B58 = /^[1-9A-HJ-NP-Za-km-z]{32,90}$/;
+const DS = "https://api.dexscreener.com";
+const BRAND_SVG = '<svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="14" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><path d="M16 16 L27 8" stroke="var(--sonar)" stroke-width="2" stroke-linecap="round"/><circle cx="22" cy="20" r="2.5" fill="var(--sonar)"/></svg>';
+const fact = (k, v, cls) => '<div class="fact"><div class="k">'+esc(k)+'</div><div class="v '+(cls || "")+'">'+esc(v)+'</div></div>';
+
+// The feed is saved as compact rows so the trade tab can show a wallet's other swaps.
+function readFeedRows(){
+  const f = store.get("feed", null);
+  if (!f || f.v !== 1 || !Array.isArray(f.rows)) return [];
+  return f.rows.map(r => ({id:r[0], pool:r[1], sym:r[2], mint:r[3], t:r[4], kind:r[5], usd:r[6], wallet:r[7], tx:r[8], amount:r[9], px:r[10], mcap:r[11], liq:r[12], created:r[13]}));
+}
+function tradeHref(t){
+  const q = new URLSearchParams({view:"trade", s:t.sym, m:t.mint, p:t.pool, w:t.wallet, x:t.tx, k:t.kind,
+    u:String(Math.round(t.usd*100)/100), a:String(t.amount), px:String(t.px || 0), t:String(t.t),
+    c:String(Math.round(t.mcap || 0)), l:String(Math.round(t.liq || 0)), d:String(t.created || 0)});
+  return location.pathname+"?"+q.toString();
+}
+function solRowHTML(t){
+  const impact = t.liq ? t.usd / t.liq * 100 : null;
+  const newPool = t.created && t.t - t.created < 864e5;
+  const side = t.kind === "sell" ? "sell" : "buy";
+  return '<li class="'+side+(t.big ? ' tier-3' : '')+(t.flash ? ' new' : '')+'">'+
+    '<a class="rowlink" href="'+esc(tradeHref(t))+'" target="_blank" rel="noopener" title="Open this trade in a new tab">'+
+    '<span class="stripe"></span><div>'+
+    '<div class="line1"><span class="sym">'+esc(t.sym)+'</span><span class="kind">'+side+'</span><span class="muted sm">'+num(t.amount)+' '+esc(t.sym)+'</span>'+(newPool ? '<span class="tag">new pool</span>' : '')+'</div>'+
+    '<div class="line2"><span class="addr">'+esc(short(t.wallet))+'</span><span>MC '+(t.mcap ? usd(t.mcap) : '—')+'</span>'+
+    (impact != null && impact >= 0.1 ? '<span>'+(impact >= 10 ? impact.toFixed(0) : impact.toFixed(1))+'% of pool</span>' : '')+'</div></div>'+
+    '<div><div class="usd">'+usd(t.usd)+'</div><div class="ago" data-t="'+t.t+'">'+ago(t.t)+'</div></div></a></li>';
+}
+
+// ---------- trade tab: opened in a new tab when a swap is clicked ----------
+function tradeView(q){
+  const g = k => q.get(k) || "";
+  const T = {sym:g("s").slice(0,40) || "?", mint:g("m"), pool:g("p"), wallet:g("w"), tx:g("x"), kind:g("k") === "sell" ? "sell" : "buy",
+    usd:+g("u") || 0, amount:+g("a") || 0, px:+g("px") || 0, t:+g("t") || 0, mcap:+g("c") || 0, liq:+g("l") || 0, created:+g("d") || 0};
+  for (const k of ["mint","pool","wallet","tx"]) if (!B58.test(T[k])) T[k] = "";
+  document.title = T.sym+" whale "+T.kind+" · Whale Sonar";
+  const L = {
+    photon: T.pool && photonUrl(T.pool),
+    birdeye: T.wallet && walletUrl(T.wallet),
+    gmgn: T.wallet && "https://gmgn.ai/sol/address/"+T.wallet,
+    solW: T.wallet && "https://solscan.io/account/"+T.wallet,
+    solTx: T.tx && "https://solscan.io/tx/"+T.tx,
+    solTok: T.mint && "https://solscan.io/token/"+T.mint,
+    dex: T.pool && "https://dexscreener.com/solana/"+T.pool,
+    gecko: T.pool && "https://www.geckoterminal.com/solana/pools/"+T.pool
+  };
+  const ext = (href, text, cls) => href ? '<a'+(cls ? ' class="'+cls+'"' : '')+' href="'+esc(href)+'" target="_blank" rel="noopener">'+text+'</a>' : "";
+  const arow = (label, val, href) => val ? '<div class="arow"><span class="k">'+label+'</span><code>'+esc(val)+'</code><span class="acts">'+ext(href, "Solscan ↗")+'<button class="btn copy" type="button" data-copy="'+esc(val)+'">Copy</button></span></div>' : "";
+  const impact = T.liq ? T.usd / T.liq * 100 : null;
+  const when = T.t ? new Date(T.t) : null;
+  const home = esc(location.pathname);
+  const w = document.createElement("div");
+  w.className = "wrap";
+  w.innerHTML =
+    '<header class="detail-head"><a class="brand" href="'+home+'">'+BRAND_SVG+'Whale Sonar <small>trade details</small></a><div class="status"><a class="btn" href="'+home+'">Back to the live feed</a></div></header>'+
+    '<main class="detail">'+
+      '<section class="dhead '+T.kind+'"><img id="d-img" alt="" hidden>'+
+        '<div><div class="eyebrow '+T.kind+'"><span class="kind">whale '+T.kind+'</span><span>'+(when ? esc(when.toLocaleString()) : "")+'</span><span id="d-ago">'+(T.t ? ago(T.t) : "")+'</span></div>'+
+        '<h1>'+esc(T.sym)+'</h1><div class="muted sm" id="d-name">'+(T.mint ? esc(short(T.mint)) : "")+'</div></div>'+
+        '<div class="big">'+usd(T.usd)+'</div></section>'+
+      '<section class="actions">'+ext(L.photon, "Buy "+esc(T.sym)+" on Photon ↗", "cta photon")+ext(L.birdeye, "Track this wallet ↗", "cta track")+'</section>'+
+      '<p class="links sm"><span class="muted">Wallet also on</span>'+ext(L.gmgn, "GMGN")+ext(L.solW, "Solscan")+'<span class="muted">· Coin charts</span>'+ext(L.dex, "DexScreener")+ext(L.gecko, "GeckoTerminal")+'</p>'+
+      '<section><h3>The trade</h3><div class="facts">'+
+        fact("Side", T.kind === "buy" ? "Bought" : "Sold")+
+        fact("Size", usd(T.usd))+
+        fact("Tokens", num(T.amount)+" "+T.sym)+
+        fact("Price", fmtPx(T.px))+
+        fact("Market cap then", T.mcap ? usd(T.mcap) : "—")+
+        fact("Pool liquidity then", T.liq ? usd(T.liq) : "—")+
+        fact("Share of pool", impact != null ? impact.toFixed(2)+"%" : "—")+
+        fact("Pool age at trade", T.created && T.t ? dur(T.t - T.created) : "—")+
+      '</div></section>'+
+      '<section><h3>Since this trade <span class="muted" id="d-live-at"></span></h3><div class="facts" id="d-live">'+fact("Live price", "Loading…")+'</div><p class="links sm" id="d-socials"></p></section>'+
+      '<section><h3>Addresses</h3><div class="addrs">'+arow("Wallet", T.wallet, L.solW)+arow("Transaction", T.tx, L.solTx)+arow("Token", T.mint, L.solTok)+arow("Pool", T.pool, L.gecko)+'</div></section>'+
+      '<section><h3>This wallet in your feed</h3><div class="panel"><ul class="feed" id="d-wallet"></ul></div></section>'+
+    '</main>';
+  document.body.appendChild(w);
+
+  w.addEventListener("click", e => {
+    const b = e.target.closest("button[data-copy]");
+    if (!b) return;
+    const code = b.closest(".arow") && b.closest(".arow").querySelector("code");
+    const selectIt = () => { if (!code) return; const r = document.createRange(); r.selectNodeContents(code); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Selected"; };
+    try { navigator.clipboard.writeText(b.dataset.copy).then(() => { b.textContent = "Copied"; setTimeout(() => { b.textContent = "Copy"; }, 1500); }, selectIt); } catch { selectIt(); }
+  });
+
+  const mine = readFeedRows().filter(r => r.wallet === T.wallet && r.tx !== T.tx).sort((a, b) => b.t - a.t).slice(0, 30);
+  $("d-wallet").innerHTML = mine.length ? mine.map(solRowHTML).join("") : '<li class="empty">No other whale swaps from this wallet in your recent feed.</li>';
+
+  async function live(){
+    if (!T.pool){ $("d-live").innerHTML = fact("Live price", "No pool address in this link"); return; }
+    try {
+      const r = await fetch(DS+"/latest/dex/pairs/solana/"+T.pool);
+      if (!r.ok) throw new Error("HTTP "+r.status);
+      const j = await r.json();
+      const p = (j.pairs && j.pairs[0]) || j.pair;
+      if (!p) throw new Error("pool not listed");
+      const now = +p.priceUsd || 0;
+      const since = T.px && now ? (now / T.px - 1) * 100 : null;
+      const tone = v => v == null || !isFinite(v) ? "" : v >= 0 ? "pos" : "neg";
+      const pc = p.priceChange || {};
+      $("d-live").innerHTML =
+        fact("Price now", fmtPx(now))+
+        fact("Since this trade", pct(since), tone(since))+
+        fact("Market cap now", usd(+p.marketCap || +p.fdv || 0))+
+        fact("Liquidity now", usd(+(p.liquidity && p.liquidity.usd) || 0))+
+        fact("24h volume", usd(+(p.volume && p.volume.h24) || 0))+
+        fact("1h change", pct(pc.h1), tone(pc.h1))+
+        fact("24h change", pct(pc.h24), tone(pc.h24))+
+        fact("Exchange", p.dexId || "—");
+      $("d-live-at").textContent = "· live, updates every 30s";
+      if (p.baseToken && p.baseToken.name) $("d-name").textContent = p.baseToken.name+(T.mint ? " · "+short(T.mint) : "");
+      const img = $("d-img"), src = p.info && p.info.imageUrl;
+      if (src && /^https:\/\//.test(src) && img.hidden){ img.onload = () => { img.hidden = false; }; img.src = src; }
+      const info = p.info || {};
+      const soc = [...(info.websites || []).map(x => [x.label || "Website", x.url]), ...(info.socials || []).map(x => [x.type ? x.type[0].toUpperCase()+x.type.slice(1) : "Social", x.url])]
+        .filter(x => /^https?:\/\//.test(x[1] || ""));
+      $("d-socials").innerHTML = soc.length ? '<span class="muted">Project links</span>'+soc.map(x => '<a href="'+esc(x[1])+'" target="_blank" rel="noopener nofollow">'+esc(x[0])+'</a>').join("") : "";
+    } catch(e){
+      $("d-live").innerHTML = fact("Live price", "Couldn't load right now ("+e.message+")");
+    }
+  }
+  live();
+  setInterval(live, 30000);
+  setInterval(() => { if (T.t) $("d-ago").textContent = ago(T.t); }, 15000);
+}
+
+const params = new URLSearchParams(location.search);
+if (params.get("view") === "trade"){ tradeView(params); return; }
+
+// ---------- settings ----------
+const MARKETS = {
+  "Index ETFs": ["SPY","QQQ","IWM","DIA"],
+  "Big Tech": ["AAPL","MSFT","GOOGL","META","AMZN","NFLX"],
+  "Semiconductors": ["NVDA","AMD","AVGO","TSM","MU","INTC"],
+  "Software & AI": ["PLTR","CRM","ORCL","SNOW"],
+  "EV & Autos": ["TSLA","RIVN","F","GM"],
+  "Financials": ["JPM","BAC","GS","V","MA"],
+  "Crypto stocks": ["COIN","MSTR","HOOD","MARA","RIOT"],
+  "Energy": ["XOM","CVX","OXY"],
+  "Healthcare": ["LLY","UNH","PFE"],
+  "Consumer": ["WMT","COST","NKE","DIS"]
+};
+const NAMES = {SPY:"S&P 500 ETF", QQQ:"Nasdaq-100 ETF", IWM:"Russell 2000 ETF", DIA:"Dow Jones ETF",
+  AAPL:"Apple", MSFT:"Microsoft", GOOGL:"Alphabet", META:"Meta Platforms", AMZN:"Amazon", NFLX:"Netflix",
+  NVDA:"NVIDIA", AMD:"AMD", AVGO:"Broadcom", TSM:"TSMC", MU:"Micron", INTC:"Intel",
+  PLTR:"Palantir", CRM:"Salesforce", ORCL:"Oracle", SNOW:"Snowflake",
+  TSLA:"Tesla", RIVN:"Rivian", F:"Ford", GM:"General Motors",
+  JPM:"JPMorgan Chase", BAC:"Bank of America", GS:"Goldman Sachs", V:"Visa", MA:"Mastercard",
+  COIN:"Coinbase", MSTR:"Strategy", HOOD:"Robinhood", MARA:"MARA Holdings", RIOT:"Riot Platforms",
+  XOM:"ExxonMobil", CVX:"Chevron", OXY:"Occidental",
+  LLY:"Eli Lilly", UNH:"UnitedHealth", PFE:"Pfizer",
+  WMT:"Walmart", COST:"Costco", NKE:"Nike", DIS:"Disney"};
+const MARKET_OF = {};
+for (const [m, list] of Object.entries(MARKETS)) for (const s of list) MARKET_OF[s] = m;
+const ETFS = new Set(MARKETS["Index ETFs"]);
+const DEFAULT_WATCH = Object.values(MARKETS).flat();
+const OLD_DEFAULT = "SPY,QQQ,NVDA,TSLA,AAPL,MSFT,AMZN,META,AMD,GOOGL,PLTR,COIN,MSTR,IWM,AVGO";
+let watch0 = store.get("watch", null);
+if (!Array.isArray(watch0) || !watch0.length || watch0.join() === OLD_DEFAULT) watch0 = DEFAULT_WATCH;
+const S = {
+  solTh: store.get("solTh", 5000),
+  minVol: store.get("minVol", 100000),
+  stkTh: store.get("stkTh", 1000000),
+  watch: watch0.slice(0, 50),
+  key: store.get("key", ""),
+  extra: store.get("extra", []),
+  band: store.get("band", "all")
+};
+let solView = store.get("solView", "buys"), stkView = store.get("stkView", "latest");
+if (!["buys","big","all"].includes(solView)) solView = "buys";
+if (!["latest","biggest","insider"].includes(stkView)) stkView = "latest";
+const SD = {}; // per-ticker Finnhub data
+const sd = s => SD[s] || (SD[s] = {busy:new Set()});
+const nameOf = s => NAMES[s] || (SD[s] && SD[s].prof && SD[s].prof.name) || s;
+const marketOf = s => MARKET_OF[s] || (SD[s] && SD[s].prof && SD[s].prof.ind) || "Other";
+const renderSolSoon = debounce(renderSol, 400);
+const renderStocksSoon = debounce(renderStocks, 500);
+const renderSignalsSoon = debounce(renderSignals, 600);
+
+// ---------- tabs ----------
+const TABS = ["memes","stocks","signals"];
+let tab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : store.get("tab", "memes");
+if (!TABS.includes(tab)) tab = "memes";
+function showTab(t){
+  tab = t; store.set("tab", t);
+  for (const b of document.querySelectorAll(".mtab")){ const on = b.dataset.tab === t; b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; }
+  for (const id of TABS) $("p-"+id).hidden = id !== t;
+  if (location.hash !== "#"+t){ try { history.replaceState(null, "", "#"+t); } catch {} }
+  if (t === "memes") renderSol();
+  if (t === "stocks") renderStocks();
+  if (t === "signals") renderSignals();
+}
+$("maintabs").addEventListener("click", e => { const b = e.target.closest(".mtab"); if (b) showTab(b.dataset.tab); });
+$("maintabs").addEventListener("keydown", e => {
+  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  const next = TABS[(TABS.indexOf(tab) + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length];
+  showTab(next); $("mt-"+next).focus();
+});
+addEventListener("hashchange", () => { const h = location.hash.slice(1); if (TABS.includes(h) && h !== tab) showTab(h); });
+
+// ---------- one fetching tab ----------
+// The free APIs rate-limit per IP, so only one open tab fetches data; any other tab mirrors it.
+const TAB = Math.random().toString(36).slice(2);
+function claimLeader(){
+  const l = store.get("leader", null), now = Date.now();
+  if (l && l.id !== TAB && now - l.at < 15000) return false;
+  store.set("leader", {id:TAB, at:now});
+  const c = store.get("leader", null);
+  return !c || c.id === TAB;
+}
+let isLeader = claimLeader();
+addEventListener("pagehide", () => { const l = store.get("leader", null); if (l && l.id === TAB) store.del("leader"); });
+addEventListener("storage", e => { if (e.key && /^ws:(key|watch|solTh|minVol|stkTh|extra)$/.test(e.key) && e.newValue !== e.oldValue) location.reload(); });
 
 // ---------- sonar ----------
 const pings = []; // {angle, t, usd, side:'buy'|'sell'|'stock'}
 function addPing(label, t, value, side){
   if (Date.now() - t > 15*60*1000) return;
-  pings.push({angle: (hash(label)%3600)/3600*Math.PI*2, t, usd:value, side});
-  if (pings.length > 300) pings.splice(0, pings.length-300);
+  pings.push({angle:(hash(label) % 3600) / 3600 * Math.PI * 2, t, usd:value, side});
+  if (pings.length > 300) pings.splice(0, pings.length - 300);
 }
 const cv = $("sonar"), cx = cv.getContext("2d");
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-function cssv(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 function drawSonar(now){
-  const dpr = devicePixelRatio||1, w = cv.clientWidth, h = cv.clientHeight;
-  if (cv.width !== Math.round(w*dpr)) { cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
-  cx.setTransform(dpr,0,0,dpr,0,0);
-  cx.clearRect(0,0,w,h);
-  const r = Math.min(w,h)/2 - 6, ox = w/2, oy = h/2;
+  requestAnimationFrame(drawSonar);
+  if (cv.offsetParent === null) return; // tab hidden
+  const dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cx.clearRect(0, 0, w, h);
+  const r = Math.min(w, h)/2 - 6, ox = w/2, oy = h/2;
   const C = {sonar:cssv("--sonar"), line:cssv("--line"), buy:cssv("--buy"), sell:cssv("--sell"), stock:cssv("--stock"), muted:cssv("--muted"), surface:cssv("--surface")};
-  cx.fillStyle = C.surface; cx.beginPath(); cx.arc(ox,oy,r,0,Math.PI*2); cx.fill();
+  cx.fillStyle = C.surface; cx.beginPath(); cx.arc(ox, oy, r, 0, Math.PI*2); cx.fill();
   cx.strokeStyle = C.line; cx.lineWidth = 1;
-  for (let i=1;i<=4;i++){ cx.beginPath(); cx.arc(ox,oy,r*i/4,0,Math.PI*2); cx.stroke(); }
-  for (let i=0;i<12;i++){ const a=i/12*Math.PI*2; cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(ox+Math.cos(a)*r, oy+Math.sin(a)*r); cx.stroke(); }
-  cx.fillStyle = C.muted; cx.font = "10px " + cssv("--mono");
-  ["4m","8m","11m","15m"].forEach((l,i)=>{ cx.fillText(l, ox+4, oy - r*(i+1)/4 + 12); });
-  const sweep = reduce ? -Math.PI/4 : ((now/6000)%1)*Math.PI*2 - Math.PI/2;
-  if (!reduce){
-    const g = cx.createConicGradient ? cx.createConicGradient(sweep - 0.9, ox, oy) : null;
-    if (g){ g.addColorStop(0,"transparent"); g.addColorStop(0.143, C.sonar + "55"); g.addColorStop(0.144,"transparent"); cx.fillStyle=g; cx.beginPath(); cx.moveTo(ox,oy); cx.arc(ox,oy,r,sweep-0.9,sweep); cx.closePath(); cx.fill(); }
+  for (let i = 1; i <= 4; i++){ cx.beginPath(); cx.arc(ox, oy, r*i/4, 0, Math.PI*2); cx.stroke(); }
+  for (let i = 0; i < 12; i++){ const a = i/12*Math.PI*2; cx.beginPath(); cx.moveTo(ox, oy); cx.lineTo(ox + Math.cos(a)*r, oy + Math.sin(a)*r); cx.stroke(); }
+  cx.fillStyle = C.muted; cx.font = "10px "+cssv("--mono");
+  ["4m","8m","11m","15m"].forEach((l, i) => { cx.fillText(l, ox + 4, oy - r*(i+1)/4 + 12); });
+  const sweep = reduce ? -Math.PI/4 : ((now/6000) % 1)*Math.PI*2 - Math.PI/2;
+  if (!reduce && cx.createConicGradient){
+    const g = cx.createConicGradient(sweep - 0.9, ox, oy);
+    g.addColorStop(0, "transparent"); g.addColorStop(0.143, C.sonar+"55"); g.addColorStop(0.144, "transparent");
+    cx.fillStyle = g; cx.beginPath(); cx.moveTo(ox, oy); cx.arc(ox, oy, r, sweep - 0.9, sweep); cx.closePath(); cx.fill();
   }
-  cx.strokeStyle = C.sonar; cx.lineWidth = 1.5; cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(ox+Math.cos(sweep)*r, oy+Math.sin(sweep)*r); cx.stroke();
+  cx.strokeStyle = C.sonar; cx.lineWidth = 1.5; cx.beginPath(); cx.moveTo(ox, oy); cx.lineTo(ox + Math.cos(sweep)*r, oy + Math.sin(sweep)*r); cx.stroke();
   const horizon = 15*60*1000, t0 = Date.now();
   for (const p of pings){
     const age = t0 - p.t; if (age > horizon || age < -60000) continue;
     const rr = Math.max(0.04, age/horizon) * r;
     const x = ox + Math.cos(p.angle)*rr, y = oy + Math.sin(p.angle)*rr;
-    const size = Math.max(2.5, Math.min(16, Math.log10(Math.max(p.usd,10)) * 3 - 8));
-    let d = ((sweep - p.angle) % (Math.PI*2) + Math.PI*2) % (Math.PI*2);
+    const size = Math.max(2.5, Math.min(16, Math.log10(Math.max(p.usd, 10))*3 - 8));
+    const d = ((sweep - p.angle) % (Math.PI*2) + Math.PI*2) % (Math.PI*2);
     const glow = reduce ? 0.6 : Math.max(0.35, 1 - d/(Math.PI*2)*1.3);
     cx.globalAlpha = glow * (1 - age/horizon*0.6);
-    const col = p.side==="buy" ? C.buy : p.side==="sell" ? C.sell : C.stock;
-    if (p.side==="stock"){ cx.strokeStyle = col; cx.lineWidth = 2; cx.beginPath(); cx.arc(x,y,size,0,Math.PI*2); cx.stroke(); }
-    else { cx.fillStyle = col; cx.beginPath(); cx.arc(x,y,size,0,Math.PI*2); cx.fill(); }
+    const col = p.side === "buy" ? C.buy : p.side === "sell" ? C.sell : C.stock;
+    if (p.side === "stock"){ cx.strokeStyle = col; cx.lineWidth = 2; cx.beginPath(); cx.arc(x, y, size, 0, Math.PI*2); cx.stroke(); }
+    else { cx.fillStyle = col; cx.beginPath(); cx.arc(x, y, size, 0, Math.PI*2); cx.fill(); }
     cx.globalAlpha = 1;
   }
-  requestAnimationFrame(drawSonar);
 }
 requestAnimationFrame(drawSonar);
 
-// ---------- Solana: GeckoTerminal ----------
-const pools = new Map(); // addr -> {addr, name, sym, mint, idx}
-const solTrades = new Map(); // id -> trade
-let poolOrder = [], poolCursor = 0, walletFilter = null, firstPass = new Set();
-const queue = []; let busy = false;
-function gt(path){ return new Promise((res, rej) => { queue.push({path,res,rej,tries:0}); pump(); }); }
-let backoff = 0;
-async function pump(){
-  if (busy || !queue.length) return;
-  busy = true;
-  const job = queue.shift();
+// ---------- Solana: find high-volume meme pools, watch where money is moving, pull whale swaps ----------
+const GT = "https://api.geckoterminal.com/api/v2";
+// Stables, SOL and large non-meme tokens that show up in the "top" lists.
+const SKIP_MINTS = new Set([
+  "So11111111111111111111111111111111111111112", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+  "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo", "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+  "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL", "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3", "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+  "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn", "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1", "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4",
+  "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij", "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs", "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+  "hntyVP6YFm1Hg25TN9WGLqM12b8TQmcknKrdu1oxWux", "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof", "85VBFQZC9TZkfaptBWjvUw7YbZjy52A6mjtPGjstQAmQ"
+]);
+const MIN_LIQ = 10000, MAX_POOLS = 150, KEEP_MS = 12*36e5;
+const BANDS = {all:[0, Infinity], micro:[0, 1e6], small:[1e6, 1e7], mid:[1e7, 1e8], large:[1e8, Infinity]};
+const pools = new Map();     // pool address -> pool
+const solTrades = new Map(); // trade id -> trade
+const scannedOnce = new Set();
+let walletFilter = null, discovering = false, scanning = false, pulsing = false, lastScanAt = 0;
+
+const gq = []; let gBusy = false, gBack = 0, gtLimited = false;
+function gt(path){ return new Promise((res, rej) => { gq.push({path, res, rej, tries:0}); gPump(); }); }
+async function gPump(){
+  if (gBusy || !gq.length) return;
+  gBusy = true;
+  const job = gq.shift();
   // GeckoTerminal's 429 carries no CORS headers, so the browser reports it as a network error.
   // Treat both the same: wait (longer each time) and retry.
   let limited = false;
@@ -328,244 +725,662 @@ async function pump(){
     const r = await fetch(GT + job.path, {headers:{accept:"application/json"}});
     if (r.status === 429) limited = true;
     else if (!r.ok) job.rej(new Error("HTTP "+r.status));
-    else { backoff = 0; job.res(await r.json()); }
+    else { gBack = 0; const j = await r.json(); if (gtLimited){ gtLimited = false; updateSolStatus(); renderSolSoon(); } job.res(j); }
   } catch(e){ limited = true; }
   if (limited){
-    if (++job.tries <= 6) queue.unshift(job); else job.rej(new Error("GeckoTerminal is busy"));
-    backoff = Math.min(60000, (backoff || 5000) * 2);
-    setStatus("st-sol","warn","Solana: data source busy, retrying in "+Math.round(backoff/1000)+"s");
-    await new Promise(z=>setTimeout(z, backoff));
+    if (!gtLimited){ gtLimited = true; renderSolSoon(); }
+    if (++job.tries <= 6) gq.unshift(job); else job.rej(new Error("GeckoTerminal is busy"));
+    gBack = Math.min(60000, (gBack || 5000) * 2);
+    setStatus("st-sol", "warn", "Solana: swap source busy, retrying in "+Math.round(gBack/1000)+"s");
+    await sleep(gBack);
   }
-  setTimeout(()=>{ busy=false; pump(); }, 2300);
+  setTimeout(() => { gBusy = false; gPump(); }, 2300);
 }
-async function loadTrending(){
-  try {
-    const [p1, p2] = await Promise.all([gt("/networks/solana/trending_pools?page=1"), gt("/networks/solana/trending_pools?page=2")]);
-    const list = [...(p1.data||[]), ...(p2.data||[])];
-    for (const p of list){
-      const mint = (p.relationships?.base_token?.data?.id||"").replace(/^solana_/,"");
-      if (SKIP_MINTS.has(mint)) continue;
-      const a = p.attributes;
-      if (!pools.has(a.address)) pools.set(a.address, {addr:a.address, name:a.name, sym:(a.name||"").split(" / ")[0], mint});
-    }
-    for (const m of S.extra) await addTokenPool(m, true);
-    poolOrder = [...pools.keys()];
-    $("t-pools").textContent = pools.size;
-    setStatus("st-sol","live","Solana: live");
-  } catch(e){
-    setStatus("st-sol","err","Solana: can't reach GeckoTerminal, retrying in 1 min");
-    if (!pools.size) setTimeout(loadTrending, 60000);
+
+function poolFromGT(p, src){
+  const a = p.attributes || {}, vol = a.volume_usd || {};
+  return {addr:a.address, name:a.name || "", sym:(a.name || "?").split(" / ")[0].trim(),
+    mint:(p.relationships?.base_token?.data?.id || "").replace(/^solana_/, ""),
+    mcap:+a.market_cap_usd || +a.fdv_usd || 0, liq:+a.reserve_in_usd || 0, vol24:+vol.h24 || 0, vol1h:+vol.h1 || 0,
+    created:Date.parse(a.pool_created_at) || 0, src};
+}
+const qualifies = o => !!o.addr && !!o.mint && !SKIP_MINTS.has(o.mint) && o.liq >= MIN_LIQ && (o.vol24 >= S.minVol || o.vol1h >= S.minVol / 6);
+function upsertPool(o){
+  const p = pools.get(o.addr);
+  if (!p){ pools.set(o.addr, {...o, lastScan:0, hits:0, lastHit:0, v5:0, b5:0, s5:0, pc5:0, pulseAt:0}); return; }
+  for (const k of ["mcap","liq","vol24","vol1h","created"]) if (o[k]) p[k] = o[k];
+  if (o.pinned) p.pinned = true;
+}
+async function discoverGT(){
+  if (discovering || !isLeader) return;
+  discovering = true;
+  for (const [path, src] of [
+    ["/networks/solana/trending_pools?page=1", "trending"],
+    ["/networks/solana/new_pools?page=1", "new"],
+    ["/networks/solana/pools?page=1", "top"],
+    ["/networks/solana/trending_pools?page=2", "trending"],
+    ["/networks/solana/pools?page=2", "top"]
+  ]){
+    if (!isLeader) break;
+    try {
+      const r = await gt(path);
+      for (const p of (r.data || [])){ const o = poolFromGT(p, src); if (qualifies(o) || pools.has(o.addr)) upsertPool(o); }
+      updateSolStatus();
+    } catch {}
   }
+  for (const m of S.extra) if (isLeader) await addTokenPool(m, true);
+  prunePools();
+  updateSolStatus();
+  discovering = false;
+  pulse();
+}
+// DexScreener's boosted and newly profiled tokens surface smaller caps that GeckoTerminal's lists miss.
+async function discoverDexScreener(){
+  if (!isLeader) return;
+  const mints = new Set();
+  for (const path of ["/token-profiles/latest/v1", "/token-boosts/latest/v1", "/token-boosts/top/v1"]){
+    try {
+      const r = await fetch(DS + path);
+      if (!r.ok) continue;
+      for (const x of [].concat(await r.json())) if (x && x.chainId === "solana" && B58.test(x.tokenAddress || "") && !SKIP_MINTS.has(x.tokenAddress)) mints.add(x.tokenAddress);
+    } catch {}
+  }
+  const list = [...mints];
+  for (let i = 0; i < list.length; i += 30){
+    try {
+      const r = await fetch(DS+"/tokens/v1/solana/"+list.slice(i, i + 30).join(","));
+      if (!r.ok) continue;
+      const best = new Map();
+      for (const p of [].concat(await r.json())){
+        const m = p && p.baseToken && p.baseToken.address;
+        if (!m || p.chainId !== "solana" || !mints.has(m)) continue;
+        const cur = best.get(m);
+        if (!cur || (+(p.liquidity?.usd) || 0) > (+(cur.liquidity?.usd) || 0)) best.set(m, p);
+      }
+      for (const p of best.values()){
+        const o = {addr:p.pairAddress, name:(p.baseToken.symbol || "?")+" / "+(p.quoteToken?.symbol || ""), sym:p.baseToken.symbol || "?", mint:p.baseToken.address,
+          mcap:+p.marketCap || +p.fdv || 0, liq:+(p.liquidity?.usd) || 0, vol24:+(p.volume?.h24) || 0, vol1h:+(p.volume?.h1) || 0, created:+p.pairCreatedAt || 0, src:"boosted"};
+        if (qualifies(o)) upsertPool(o);
+      }
+    } catch {}
+  }
+  prunePools();
+  updateSolStatus();
+}
+// Every 15s: 5-minute volume and buy/sell counts for every tracked pool, 30 pools per request.
+async function pulse(){
+  if (pulsing || !isLeader || !pools.size) return;
+  pulsing = true;
+  const addrs = [...pools.keys()];
+  for (let i = 0; i < addrs.length; i += 30){
+    try {
+      const r = await fetch(DS+"/latest/dex/pairs/solana/"+addrs.slice(i, i + 30).join(","));
+      if (!r.ok) continue;
+      const j = await r.json(), now = Date.now();
+      for (const p of (j.pairs || [])){
+        const pool = pools.get(p.pairAddress); if (!pool) continue;
+        const tx = (p.txns && p.txns.m5) || {};
+        pool.v5 = +(p.volume?.m5) || 0; pool.b5 = +tx.buys || 0; pool.s5 = +tx.sells || 0; pool.pc5 = +(p.priceChange?.m5) || 0;
+        pool.mcap = +p.marketCap || +p.fdv || pool.mcap;
+        pool.liq = +(p.liquidity?.usd) || pool.liq;
+        pool.vol1h = +(p.volume?.h1) || 0;
+        pool.vol24 = +(p.volume?.h24) || pool.vol24;
+        pool.pulseAt = now;
+      }
+    } catch {}
+  }
+  pulsing = false;
+  if (solView === "big") renderHot();
+  saveFeedSoon();
 }
 async function addTokenPool(mint, quiet){
-  try{
-    const r = await gt("/networks/solana/tokens/"+encodeURIComponent(mint)+"/pools?page=1");
-    const p = (r.data||[])[0]; if (!p) throw new Error("no pools found");
-    const a = p.attributes;
-    pools.set(a.address, {addr:a.address, name:a.name, sym:(a.name||"").split(" / ")[0], mint, pinned:true});
-    poolOrder = [...pools.keys()]; $("t-pools").textContent = pools.size;
-    if (!quiet) $("extra-msg").textContent = "Added "+a.name+".";
+  try {
+    if (!B58.test(mint)) throw new Error("that isn't a Solana token address");
+    const r = await gt("/networks/solana/tokens/"+mint+"/pools?page=1");
+    const p = (r.data || [])[0];
+    if (!p) throw new Error("no pools found");
+    const o = poolFromGT(p, "watch");
+    if (!o.mint) o.mint = mint;
+    o.pinned = true;
+    upsertPool(o);
+    updateSolStatus();
+    if (!quiet) $("extra-msg").textContent = "Added "+o.name+".";
     return true;
-  }catch(e){ if(!quiet) $("extra-msg").textContent = "Couldn't add that token: "+e.message; return false; }
+  } catch(e){ if (!quiet) $("extra-msg").textContent = "Couldn't add that token: "+e.message; return false; }
 }
-async function scanNext(){
-  if (!poolOrder.length){ setTimeout(scanNext, 3000); return; }
-  const addr = poolOrder[poolCursor % poolOrder.length]; poolCursor++;
-  const pool = pools.get(addr);
-  if (!firstPass.has(addr)) setStatus("st-sol","live","Solana: scanning "+Math.min(poolCursor,poolOrder.length)+"/"+poolOrder.length);
-  else setStatus("st-sol","live","Solana: live · "+pools.size+" pools");
-  try{
-    const r = await gt("/networks/solana/pools/"+addr+"/trades?trade_volume_in_usd_greater_than="+Math.round(S.solTh));
-    let added = 0;
-    for (const t of (r.data||[])){
-      if (solTrades.has(t.id)) continue;
-      const a = t.attributes, buy = a.kind === "buy";
-      const tr = {
-        id:t.id, pool:addr, sym:pool.sym, mint:pool.mint, t:Date.parse(a.block_timestamp), kind:a.kind,
-        usd:+a.volume_in_usd, wallet:a.tx_from_address, tx:a.tx_hash,
-        amount: buy ? +a.to_token_amount : +a.from_token_amount,
-        fresh: firstPass.has(addr)
-      };
-      solTrades.set(t.id, tr); added++;
-      addPing(pool.sym, tr.t, tr.usd, buy?"buy":"sell");
-    }
-    firstPass.add(addr);
-    if (added) renderSol();
-  }catch(e){ /* skip pool this round */ }
-  setTimeout(scanNext, 50);
+function prunePools(){
+  if (pools.size <= MAX_POOLS) return;
+  const drop = [...pools.values()].filter(p => !p.pinned).sort((a, b) => (a.hits - b.hits) || (a.vol24 - b.vol24)).slice(0, pools.size - MAX_POOLS);
+  for (const p of drop) pools.delete(p.addr);
+}
+// Scan next wherever the most unseen money should be: the pool's current dollar-per-second rate
+// (5-minute volume when fresh) times the time since we last looked, capped at an hour.
+function pickPool(){
+  const now = Date.now();
+  let best = null, top = -1;
+  for (const p of pools.values()){
+    if (p.lastScan && now - p.lastScan < 15e3) continue;
+    const fresh = p.pulseAt && now - p.pulseAt < 90e3;
+    const rate = Math.max(fresh ? p.v5 / 300 : (p.vol1h || p.vol24 / 24) / 3600, p.vol24 / 86400 * 0.2, 0.01);
+    const since = p.lastScan ? Math.min(now - p.lastScan, 36e5) : 36e5;
+    const s = rate * since * (now - p.lastHit < 30*60e3 ? 1.5 : 1);
+    if (s > top){ top = s; best = p; }
+  }
+  return best;
+}
+async function scanLoop(){
+  if (!isLeader){ scanning = false; return; }
+  scanning = true;
+  const pool = pickPool();
+  if (!pool){ setTimeout(scanLoop, 1500); return; }
+  pool.lastScan = Date.now();
+  const wasScanned = scannedOnce.has(pool.addr);
+  try {
+    const r = await gt("/networks/solana/pools/"+pool.addr+"/trades?trade_volume_in_usd_greater_than="+Math.round(S.solTh));
+    lastScanAt = Date.now();
+    ingest(pool, r.data || [], wasScanned);
+  } catch(e){
+    if (/HTTP 404/.test(e.message) && !pool.pinned) pools.delete(pool.addr);
+  }
+  scannedOnce.add(pool.addr);
+  updateSolStatus();
+  setTimeout(scanLoop, 50);
+}
+function ingest(pool, list, wasScanned){
+  let added = 0;
+  const now = Date.now();
+  for (const t of list){
+    if (solTrades.has(t.id)) continue;
+    const a = t.attributes || {}, buy = a.kind === "buy";
+    const tr = {id:t.id, pool:pool.addr, sym:pool.sym, mint:pool.mint, t:Date.parse(a.block_timestamp), kind:buy ? "buy" : "sell",
+      usd:+a.volume_in_usd || 0, wallet:a.tx_from_address || "", tx:a.tx_hash || "",
+      amount:+(buy ? a.to_token_amount : a.from_token_amount) || 0, px:+(buy ? a.price_to_in_usd : a.price_from_in_usd) || 0,
+      mcap:pool.mcap, liq:pool.liq, created:pool.created, fresh:wasScanned, seen:now};
+    if (!tr.t || now - tr.t > KEEP_MS) continue;
+    solTrades.set(t.id, tr); added++;
+    addPing(pool.sym, tr.t, tr.usd, tr.kind);
+    if (now - tr.t < 30*60e3) pool.lastHit = now;
+  }
+  if (added){ pool.hits += added; renderSolSoon(); }
+}
+function scanProgress(){ let done = 0; for (const a of pools.keys()) if (scannedOnce.has(a)) done++; return done; }
+function updateSolStatus(){
+  if (!isLeader) return;
+  const n = pools.size, done = scanProgress();
+  $("t-pools").textContent = n;
+  $("t-pools-s").textContent = !n ? "finding pools…" : done < n ? done+" scanned so far" : "busiest checked most often";
+  if (!gtLimited) setStatus("st-sol", "live", !n ? "Solana: finding pools" : done < n ? "Solana: first pass "+done+"/"+n : "Solana: live · "+n+" pools");
+}
+const saveFeedSoon = debounce(() => {
+  const rows = [...solTrades.values()].sort((a, b) => b.t - a.t).slice(0, 400)
+    .map(t => [t.id, t.pool, t.sym, t.mint, t.t, t.kind, Math.round(t.usd*100)/100, t.wallet, t.tx, t.amount, t.px, Math.round(t.mcap || 0), Math.round(t.liq || 0), t.created || 0]);
+  store.set("feed", {v:1, at:Date.now(), rows});
+  store.set("solStatus", {pools:pools.size, done:scanProgress(), at:Date.now(), lastScanAt});
+  store.set("hot", {at:Date.now(), rows:hotPools().map(p => [p.addr, p.sym, p.v5, p.b5, p.s5, p.pc5, Math.round(p.mcap || 0), Math.round(p.liq || 0), Math.round(p.vol1h || 0)])});
+}, 3000);
+function loadFeed(markFresh){
+  const now = Date.now();
+  for (const r of readFeedRows()){
+    if (now - r.t > KEEP_MS || solTrades.has(r.id)) continue;
+    solTrades.set(r.id, {...r, fresh:!!markFresh, seen:now});
+    addPing(r.sym, r.t, r.usd, r.kind);
+  }
+}
+
+// Views: new buys first; biggest volume = hottest coins right now plus the largest swaps.
+const VIEWS = {
+  buys: {win:36e5, keep:t => t.kind === "buy", sort:(a, b) => b.t - a.t, max:150, label:"whale buys · last hour"},
+  big: {win:6*36e5, keep:() => true, sort:(a, b) => b.usd - a.usd, max:60, label:"biggest volume"},
+  all: {win:36e5, keep:() => true, sort:(a, b) => b.t - a.t, max:150, label:"buys and sells · last hour"}
+};
+const inBand = m => S.band === "all" || (m > 0 && m >= BANDS[S.band][0] && m < BANDS[S.band][1]);
+function hotPools(){
+  if (!isLeader){
+    const h = store.get("hot", null);
+    return h && Date.now() - h.at < 120e3 ? h.rows.map(r => ({addr:r[0], sym:r[1], v5:r[2], b5:r[3], s5:r[4], pc5:r[5], mcap:r[6], liq:r[7], vol1h:r[8]})) : [];
+  }
+  const now = Date.now();
+  return [...pools.values()].filter(p => p.pulseAt && now - p.pulseAt < 120e3 && p.v5 > 0).sort((a, b) => b.v5 - a.v5).slice(0, 20);
+}
+function coinRow(p){
+  return '<li class="'+(p.pc5 >= 0 ? "buy" : "sell")+'"><a class="rowlink" href="'+esc(photonUrl(p.addr))+'" target="_blank" rel="noopener" title="Open '+esc(p.sym)+' on Photon"><span class="stripe"></span><div>'+
+    '<div class="line1"><span class="sym">'+esc(p.sym)+'</span><span class="kind">'+pct(p.pc5)+' · 5m</span><span class="muted sm">'+(p.b5 || 0)+' buys · '+(p.s5 || 0)+' sells</span></div>'+
+    '<div class="line2"><span>MC '+(p.mcap ? usd(p.mcap) : "—")+'</span><span>Liq '+usd(p.liq)+'</span><span>1h vol '+usd(p.vol1h)+'</span><span>Photon ↗</span></div></div>'+
+    '<div><div class="usd">'+usd(p.v5)+'</div><div class="ago">5-min volume</div></div></a></li>';
+}
+function renderHot(){
+  const list = hotPools().filter(p => inBand(p.mcap)).slice(0, 8);
+  $("hot-feed").innerHTML = list.length ? list.map(coinRow).join("") : '<li class="empty">Measuring 5-minute volume across all tracked pools…</li>';
+}
+function updateSolMeta(){
+  const at = isLeader ? lastScanAt : ((store.get("solStatus", null) || {}).lastScanAt || 0);
+  $("sol-meta").textContent = "≥ "+usd(S.solTh)+" · "+VIEWS[solView].label+(at ? " · checked "+ago(at) : "");
+}
+function solEmpty(){
+  if (gtLimited) return "GeckoTerminal is rate-limiting this network right now, so new swaps are paused and retrying. Biggest volume still shows live 5-minute volume.";
+  if (isLeader && !pools.size) return "Finding high-volume meme pools…";
+  if (walletFilter) return "No swaps from this wallet in this view.";
+  if (S.band !== "all") return "Nothing in this market-cap range yet.";
+  const what = solView === "buys" ? "whale buys" : "whale swaps";
+  if (isLeader && scanProgress() < pools.size) return "Checking the pools with the most money moving first. New "+what+" over "+usd(S.solTh)+" show up here as they're found.";
+  return "No "+what+" over "+usd(S.solTh)+" in "+(solView === "big" ? "the last 6 hours" : "the last hour")+".";
 }
 function renderSol(){
-  // prune: keep newest 600
-  let all = [...solTrades.values()].filter(t => t.usd >= S.solTh).sort((a,b)=>b.t-a.t);
-  if (solTrades.size > 800){ for (const t of [...solTrades.values()].sort((a,b)=>a.t-b.t).slice(0, solTrades.size-800)) solTrades.delete(t.id); }
-  const shown = (walletFilter ? all.filter(t=>t.wallet===walletFilter) : all).slice(0,200);
-  const feed = $("sol-feed");
-  if (!shown.length){ feed.innerHTML = '<li class="empty" style="display:block;padding:18px 16px">No swaps over '+usd(S.solTh)+' yet. Still scanning.</li>'; }
-  else feed.innerHTML = shown.map(t => {
-    const tier = t.usd >= S.solTh*10 ? "tier-3" : "";
-    return '<li class="'+t.kind+' '+tier+(t.fresh && Date.now()-t.t<120000?' new':'')+'"><span class="stripe"></span><div>'+
-      '<div class="line1"><span class="sym">'+esc(t.sym)+'</span><span class="kind">'+esc(t.kind)+'</span><span class="muted" style="font-size:12px">'+num(t.amount)+' '+esc(t.sym)+'</span></div>'+
-      '<div class="line2"><a href="https://solscan.io/account/'+esc(t.wallet)+'" target="_blank" rel="noopener" class="addr" title="'+esc(t.wallet)+'">'+short(t.wallet)+'</a>'+
-      '<a href="https://solscan.io/tx/'+esc(t.tx)+'" target="_blank" rel="noopener">tx</a>'+
-      '<a href="https://www.geckoterminal.com/solana/pools/'+esc(t.pool)+'" target="_blank" rel="noopener">chart</a></div></div>'+
-      '<div><div class="usd">'+usd(t.usd)+'</div><div class="ago" data-t="'+t.t+'">'+ago(t.t)+'</div></div></li>';
-  }).join("");
-  // stats
-  const hour = all.filter(t => Date.now()-t.t < 3600000);
-  $("t-count").textContent = hour.length;
-  const bv = hour.filter(t=>t.kind==="buy").reduce((s,t)=>s+t.usd,0), sv = hour.filter(t=>t.kind==="sell").reduce((s,t)=>s+t.usd,0);
-  const tot = bv+sv || 1;
+  const now = Date.now();
+  for (const [id, t] of solTrades) if (now - t.t > KEEP_MS) solTrades.delete(id);
+  if (solTrades.size > 1500) for (const t of [...solTrades.values()].sort((a, b) => a.t - b.t).slice(0, solTrades.size - 1500)) solTrades.delete(t.id);
+  const all = [...solTrades.values()].filter(t => t.usd >= S.solTh);
+  const V = VIEWS[solView];
+  let list = all.filter(t => now - t.t < V.win && V.keep(t) && inBand(t.mcap));
+  if (walletFilter) list = list.filter(t => t.wallet === walletFilter);
+  list.sort(V.sort);
+  for (const b of $("sol-views").querySelectorAll("button")) b.setAttribute("aria-selected", String(b.dataset.view === solView));
+  $("hot-wrap").hidden = solView !== "big";
+  if (solView === "big") renderHot();
+  $("sol-feed").innerHTML = list.length
+    ? list.slice(0, V.max).map(t => { const html = solRowHTML({...t, big:t.usd >= S.solTh*10, flash:t.fresh && !t.shown && now - t.seen < 15000}); t.shown = true; return html; }).join("")
+    : '<li class="empty">'+esc(solEmpty())+'</li>';
+  updateSolMeta();
+  const hour = all.filter(t => now - t.t < 36e5), six = all.filter(t => now - t.t < 6*36e5);
+  let bv = 0, sv = 0, bn = 0, sn = 0;
+  for (const t of hour){ if (t.kind === "buy"){ bv += t.usd; bn++; } else { sv += t.usd; sn++; } }
+  $("t-buys").textContent = bn; $("t-buys-s").textContent = usd(bv)+" bought";
+  $("t-sells").textContent = sn; $("t-sells-s").textContent = usd(sv)+" sold";
+  const tot = bv + sv || 1;
   $("flow-b").style.width = (bv/tot*100)+"%"; $("flow-s").style.width = (sv/tot*100)+"%";
-  $("flow-txt").innerHTML = '<span style="color:var(--buy)">'+usd(bv)+' bought</span> · <span style="color:var(--sell)">'+usd(sv)+' sold</span>';
-  const big = all.reduce((m,t)=> !m || t.usd>m.usd ? t : m, null);
-  if (big){ $("t-big").textContent = usd(big.usd); $("t-big-s").textContent = big.kind+" "+big.sym+" · "+ago(big.t); }
-  // wallets
+  $("flow-txt").innerHTML = hour.length ? '<span class="pos">'+usd(bv)+' in</span> · <span class="neg">'+usd(sv)+' out</span>' : "—";
+  const big = six.reduce((m, t) => !m || t.usd > m.usd ? t : m, null);
+  $("t-big").textContent = big ? usd(big.usd) : "—";
+  $("t-big-s").textContent = big ? big.kind+" "+big.sym+" · "+ago(big.t) : "no swaps yet";
   const W = new Map();
-  for (const t of all){ const w = W.get(t.wallet) || {wallet:t.wallet, vol:0, net:0, n:0, syms:new Set()}; w.vol+=t.usd; w.net += t.kind==="buy"?t.usd:-t.usd; w.n++; w.syms.add(t.sym); W.set(t.wallet,w); }
-  const top = [...W.values()].sort((a,b)=>b.vol-a.vol).slice(0,10);
-  $("wallets").innerHTML = top.length ? top.map((w,i)=>
-    '<li data-w="'+esc(w.wallet)+'" title="Show only this wallet"><span class="rank">'+(i+1)+'</span><span><span class="addr">'+short(w.wallet)+'</span> <span class="muted" style="font-size:12px">'+w.n+' swaps · '+esc([...w.syms].slice(0,2).join(", "))+(w.syms.size>2?"…":"")+'</span></span><span class="net" style="color:'+(w.net>=0?'var(--buy)':'var(--sell)')+'">'+(w.net>=0?"+":"−")+usd(Math.abs(w.net)).slice(0)+'</span></li>'
-  ).join("") : '<li class="empty" style="grid-column:1/-1;display:block;border:0">Scanning trending pools…</li>';
+  for (const t of six){
+    if (!t.wallet) continue;
+    const w = W.get(t.wallet) || {wallet:t.wallet, vol:0, net:0, n:0, syms:new Set()};
+    w.vol += t.usd; w.net += t.kind === "buy" ? t.usd : -t.usd; w.n++; w.syms.add(t.sym); W.set(t.wallet, w);
+  }
+  const top = [...W.values()].sort((a, b) => b.vol - a.vol).slice(0, 10);
+  $("wallets").innerHTML = top.length ? top.map((w, i) =>
+    '<li data-w="'+esc(w.wallet)+'" title="Show only this wallet\'s swaps"><span class="rank">'+(i+1)+'</span><span><span class="addr">'+esc(short(w.wallet))+'</span> <span class="muted sm">'+w.n+' swaps · '+esc([...w.syms].slice(0, 2).join(", "))+(w.syms.size > 2 ? "…" : "")+'</span></span><span class="net '+(w.net >= 0 ? "pos" : "neg")+'">'+(w.net >= 0 ? "+" : "")+usd(w.net)+'</span></li>'
+  ).join("") : '<li class="empty">Scanning meme pools…</li>';
+  const fresh = all.filter(t => t.kind === "buy" && now - t.t < 10*60e3).length;
+  $("b-memes").textContent = fresh ? fresh+" new" : "";
+  if (isLeader && solTrades.size) saveFeedSoon();
 }
 $("wallets").addEventListener("click", e => {
   const li = e.target.closest("li[data-w]"); if (!li) return;
-  walletFilter = li.dataset.w; $("sol-filter").hidden = false; $("sol-filter-addr").textContent = short(walletFilter); renderSol();
-  $("sol-feed").scrollIntoView({behavior: reduce?"auto":"smooth", block:"start"});
+  walletFilter = li.dataset.w;
+  $("sol-filter").hidden = false;
+  $("sol-filter-addr").textContent = short(walletFilter);
+  $("sol-filter-track").href = walletUrl(walletFilter);
+  renderSol();
+  $("sol-feed").scrollIntoView({behavior:reduce ? "auto" : "smooth", block:"nearest"});
 });
 $("sol-clear").onclick = () => { walletFilter = null; $("sol-filter").hidden = true; renderSol(); };
+function syncChips(){ for (const b of $("mc-chips").querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.band === S.band)); }
+$("mc-chips").addEventListener("click", e => {
+  const b = e.target.closest("button[data-band]"); if (!b) return;
+  S.band = b.dataset.band; store.set("band", S.band); syncChips(); renderSol();
+});
+$("sol-views").addEventListener("click", e => {
+  const b = e.target.closest("button[data-view]"); if (!b) return;
+  solView = b.dataset.view; store.set("solView", solView); renderSol();
+});
 
-// ---------- Stocks: Finnhub ----------
-let ws = null, lastPx = {}, blocks = [], insiders = [], wsRetry = 0, stkTab = "blocks";
+// ---------- Stocks: Finnhub live trades, quotes, news, analyst ratings, insider filings ----------
+const FH = "https://finnhub.io/api/v1";
+let ws = null, wsRetry = 0, wsTimer = 0, keyBad = false;
+const lastPx = {};
+let blocks = [];
+function loadBlocks(){ const b = store.get("blocks", null); if (b && b.day === nyDay() && Array.isArray(b.rows)) blocks = b.rows; }
+const saveBlocksSoon = debounce(() => store.set("blocks", {day:nyDay(), rows:blocks.slice(0, 300)}), 3000);
 function marketState(){
-  const ny = new Date(new Date().toLocaleString("en-US",{timeZone:"America/New_York"}));
-  const d = ny.getDay(), m = ny.getHours()*60+ny.getMinutes();
-  if (d===0||d===6) return "Market closed (weekend)";
-  if (m>=570 && m<960) return "Market open";
-  if (m>=240 && m<570) return "Pre-market";
-  if (m>=960 && m<1200) return "After hours";
+  const ny = new Date(new Date().toLocaleString("en-US", {timeZone:"America/New_York"}));
+  const d = ny.getDay(), m = ny.getHours()*60 + ny.getMinutes();
+  if (d === 0 || d === 6) return "Market closed (weekend)";
+  if (m >= 570 && m < 960) return "Market open";
+  if (m >= 240 && m < 570) return "Pre-market";
+  if (m >= 960 && m < 1200) return "After hours";
   return "Market closed";
 }
-function showStkPanes(){
-  const has = !!S.key;
-  $("stk-setup").hidden = has;
-  $("stk-feed").hidden = !has || stkTab!=="blocks";
-  $("ins-feed").hidden = !has || stkTab!=="insider";
-  $("tab-blocks").setAttribute("aria-selected", stkTab==="blocks");
-  $("tab-insider").setAttribute("aria-selected", stkTab==="insider");
-}
-$("tab-blocks").onclick = () => { stkTab="blocks"; showStkPanes(); };
-$("tab-insider").onclick = () => { stkTab="insider"; showStkPanes(); };
 function connectStocks(){
-  if (ws){ try{ ws.onclose=null; ws.close(); }catch{} ws=null; }
-  showStkPanes();
-  if (!S.key){ setStatus("st-stk","","Stocks: add a Finnhub key"); return; }
-  setStatus("st-stk","warn","Stocks: connecting");
+  if (ws){ ws.onclose = null; try{ ws.close(); }catch{} ws = null; }
+  clearTimeout(wsTimer);
+  if (!S.key){ setStatus("st-stk", "", "Stocks: add a Finnhub key"); return; }
+  if (!isLeader) return;
+  setStatus("st-stk", "warn", "Stocks: connecting");
   ws = new WebSocket("wss://ws.finnhub.io?token="+encodeURIComponent(S.key));
-  ws.onopen = () => { wsRetry = 0; for (const s of S.watch.slice(0,50)) ws.send(JSON.stringify({type:"subscribe", symbol:s})); setStatus("st-stk","live","Stocks: streaming "+S.watch.length+" tickers"); renderBlocks(); };
+  ws.onopen = () => {
+    wsRetry = 0;
+    for (const s of S.watch.slice(0, 50)) ws.send(JSON.stringify({type:"subscribe", symbol:s}));
+    setStatus("st-stk", "live", "Stocks: streaming "+Math.min(50, S.watch.length)+" tickers");
+    renderStocks();
+  };
   ws.onmessage = ev => {
-    let m; try{ m = JSON.parse(ev.data); }catch{ return; }
-    if (m.type === "error"){ setStatus("st-stk","err","Stocks: "+(m.msg||"error")); return; }
-    if (m.type !== "trade" || !m.data) return;
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    if (m.type === "error"){ setStatus("st-stk", "err", "Stocks: "+(m.msg || "error")); return; }
+    if (m.type !== "trade" || !Array.isArray(m.data)) return;
     let hit = false;
     for (const tr of m.data){
       const prev = lastPx[tr.s]; lastPx[tr.s] = tr.p;
-      const notional = tr.p * tr.v;
-      if (notional < S.stkTh) continue;
-      const dir = prev==null || tr.p===prev ? "flat" : tr.p>prev ? "up" : "down";
-      blocks.unshift({s:tr.s, p:tr.p, v:tr.v, n:notional, t:tr.t, dir, c:(tr.c||[]).join(",")});
-      addPing(tr.s, tr.t, notional, "stock"); hit = true;
+      const n = tr.p * tr.v;
+      if (n < S.stkTh) continue;
+      const dir = prev == null || tr.p === prev ? "flat" : tr.p > prev ? "up" : "down";
+      blocks.unshift({s:tr.s, p:tr.p, v:tr.v, n, t:tr.t, dir, c:(tr.c || []).join(",")});
+      addPing(tr.s, tr.t, n, "stock"); hit = true;
     }
-    if (hit){ blocks = blocks.slice(0,300); renderBlocks(); }
+    if (hit){ blocks = blocks.slice(0, 300); renderStocksSoon(); renderSignalsSoon(); saveBlocksSoon(); }
   };
   ws.onclose = () => {
-    setStatus("st-stk","err","Stocks: disconnected, retrying");
-    const d = Math.min(60000, 2000 * 2 ** wsRetry++);
-    setTimeout(connectStocks, d);
+    ws = null;
+    setStatus("st-stk", "err", "Stocks: disconnected, retrying");
+    wsTimer = setTimeout(connectStocks, Math.min(60000, 2000 * 2 ** wsRetry++));
   };
-  loadInsiders();
 }
-function renderBlocks(){
-  const today = new Date().toDateString();
-  $("t-blocks").textContent = blocks.filter(b => new Date(b.t).toDateString()===today).length;
+function blockRow(b, now){
+  return '<li class="'+b.dir+(now - b.t < 5000 ? ' new' : '')+(b.n >= S.stkTh*10 ? ' tier-3' : '')+'"><a class="rowlink" href="'+rh(b.s)+'" target="_blank" rel="noopener" title="Open '+esc(b.s)+' on Robinhood"><span class="stripe"></span><div>'+
+    '<div class="line1"><span class="sym">'+esc(b.s)+'</span><span class="kind">'+(b.dir === "up" ? "uptick" : b.dir === "down" ? "downtick" : "block")+'</span><span class="muted sm">'+num(b.v)+' sh @ $'+(+b.p).toFixed(2)+'</span></div>'+
+    '<div class="line2"><span>'+esc(nameOf(b.s))+'</span>'+(b.c ? '<span title="Trade condition codes">cond '+esc(b.c)+'</span>' : '')+'<span>Robinhood ↗</span></div></div>'+
+    '<div><div class="usd">'+usd(b.n)+'</div><div class="ago" data-t="'+b.t+'">'+ago(b.t)+'</div></div></a></li>';
+}
+function insiderRows(){
+  const cutoff = isoDay(30), out = [];
+  for (const s of S.watch){
+    const d = SD[s]; if (!d || !d.ins) continue;
+    for (const x of d.ins){ const nv = x.sh * x.px; if (nv >= 250000 && (x.f || x.d || "") >= cutoff) out.push({s, ...x, nv}); }
+  }
+  out.sort((a, b) => (b.f || "").localeCompare(a.f || "") || b.nv - a.nv);
+  const loading = S.watch.some(s => !ETFS.has(s) && !(SD[s] && SD[s].insAt));
+  return out.length ? out.slice(0, 150).map(x =>
+    '<li class="'+(x.c === "P" ? "buy" : "sell")+(x.nv >= 10e6 ? ' tier-3' : '')+'"><a class="rowlink" href="'+rh(x.s)+'" target="_blank" rel="noopener" title="Open '+esc(x.s)+' on Robinhood"><span class="stripe"></span><div>'+
+    '<div class="line1"><span class="sym">'+esc(x.s)+'</span><span class="kind">'+(x.c === "P" ? "insider buy" : "insider sell")+'</span><span class="muted sm">'+num(x.sh)+' sh @ $'+x.px.toFixed(2)+'</span></div>'+
+    '<div class="line2"><span>'+esc(x.n)+'</span><span>traded '+esc(x.d)+'</span><span>filed '+esc(x.f)+'</span></div></div>'+
+    '<div><div class="usd">'+usd(x.nv)+'</div><div class="ago">'+num(x.left || 0)+' left</div></div></a></li>'
+  ).join("") : '<li class="empty">'+(loading ? "Loading Form 4 filings for your watchlist…" : "No open-market insider trades over $250K in the last 30 days for this watchlist.")+'</li>';
+}
+function renderStocks(){
+  const has = !!S.key;
+  $("stk-setup").hidden = has; $("stk-feed").hidden = !has; $("stk-tiles").hidden = !has;
+  for (const b of $("stk-views").querySelectorAll("button")) b.setAttribute("aria-selected", String(b.dataset.view === stkView));
+  const today = nyDay(), todays = blocks.filter(b => nyDay(b.t) === today);
+  let up = 0, down = 0, big = null;
+  for (const b of todays){ if (b.dir === "up") up += b.n; else if (b.dir === "down") down += b.n; if (!big || b.n > big.n) big = b; }
+  $("s-count").textContent = todays.length; $("s-up").textContent = usd(up); $("s-down").textContent = usd(down);
+  $("s-big").textContent = big ? usd(big.n) : "—"; $("s-big-s").textContent = big ? big.s+" · "+ago(big.t) : "today";
+  $("b-stocks").textContent = has && todays.length ? todays.length+" today" : "";
+  if (!has){ $("stk-meta").textContent = "needs a Finnhub key"; return; }
   const f = $("stk-feed");
-  if (!blocks.length){
+  if (stkView === "insider"){ $("stk-meta").textContent = "open-market trades ≥ $250K · last 30 days"; f.innerHTML = insiderRows(); return; }
+  $("stk-meta").textContent = "prints ≥ "+usd(S.stkTh)+" · today";
+  const list = stkView === "biggest" ? [...todays].sort((a, b) => b.n - a.n) : todays;
+  if (!list.length){
     const ms = marketState();
-    f.innerHTML = '<li class="empty" style="display:block;padding:18px 16px">'+(ms==="Market open" ? "Listening for prints over "+usd(S.stkTh)+"…" : esc(ms)+". Block prints show up when trading resumes (pre-market 4:00 ET, open 9:30 ET). Check the Insider tab in the meantime.")+'</li>';
+    f.innerHTML = '<li class="empty">'+(ms === "Market open" ? "Listening for prints over "+usd(S.stkTh)+"…" : esc(ms)+". Block prints show up when trading resumes (pre-market 4:00 ET, open 9:30 ET). Insider trades and signals still update.")+'</li>';
     return;
   }
-  f.innerHTML = blocks.slice(0,150).map(b =>
-    '<li class="'+b.dir+(Date.now()-b.t<5000?' new':'')+(b.n>=S.stkTh*10?' tier-3':'')+'"><span class="stripe"></span><div>'+
-    '<div class="line1"><span class="sym">'+esc(b.s)+'</span><span class="kind">'+(b.dir==="up"?"uptick":b.dir==="down"?"downtick":"block")+'</span><span class="muted" style="font-size:12px">'+num(b.v)+' sh @ $'+b.p.toFixed(2)+'</span></div>'+
-    '<div class="line2"><a href="https://finance.yahoo.com/quote/'+esc(b.s)+'" target="_blank" rel="noopener">quote</a>'+(b.c?'<span title="Trade condition codes">cond '+esc(b.c)+'</span>':'')+'</div></div>'+
-    '<div><div class="usd">'+usd(b.n)+'</div><div class="ago" data-t="'+b.t+'">'+ago(b.t)+'</div></div></li>'
-  ).join("");
+  const now = Date.now();
+  f.innerHTML = list.slice(0, 150).map(b => blockRow(b, now)).join("");
 }
-async function loadInsiders(){
-  if (!S.key) return;
-  const from = new Date(Date.now()-30*86400000).toISOString().slice(0,10);
-  const out = [];
-  $("ins-feed").innerHTML = '<li class="empty" style="display:block;padding:18px 16px">Loading Form 4 filings for your watchlist…</li>';
-  for (const s of S.watch.slice(0,30)){
-    try{
-      const r = await fetch("https://finnhub.io/api/v1/stock/insider-transactions?symbol="+encodeURIComponent(s)+"&from="+from+"&token="+encodeURIComponent(S.key));
-      if (!r.ok) continue;
-      const j = await r.json();
-      for (const x of (j.data||[])){
-        if (x.transactionCode!=="P" && x.transactionCode!=="S") continue;
-        const n = Math.abs(x.change) * (x.transactionPrice||0);
-        if (n < 250000) continue;
-        out.push({s, name:x.name, code:x.transactionCode, sh:Math.abs(x.change), px:x.transactionPrice, n, date:x.transactionDate, filed:x.filingDate, remain:x.share});
-      }
-    }catch{}
-    await new Promise(z=>setTimeout(z,1100));
+$("stk-views").addEventListener("click", e => {
+  const b = e.target.closest("button[data-view]"); if (!b) return;
+  stkView = b.dataset.view; store.set("stkView", stkView); renderStocks();
+});
+
+const fq = []; let fBusy = false, fBack = 0;
+function fh(path){ return new Promise((res, rej) => { fq.push({path, res, rej, tries:0}); fPump(); }); }
+function resetFinnhub(){ while (fq.length) fq.shift().rej(new Error("reset")); keyBad = false; }
+async function fPump(){
+  if (fBusy || !fq.length) return;
+  fBusy = true;
+  const job = fq.shift();
+  if (keyBad || !S.key){ job.rej(new Error("no key")); fBusy = false; fPump(); return; }
+  let retry = false;
+  try {
+    const r = await fetch(FH + job.path + (job.path.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(S.key));
+    if (r.status === 429) retry = true;
+    else if (r.status === 401){ keyBad = true; job.rej(new Error("bad key")); setStatus("st-stk", "err", "Stocks: Finnhub didn't accept the key"); renderSignalsSoon(); }
+    else if (!r.ok) job.rej(new Error("HTTP "+r.status));
+    else { fBack = 0; job.res(await r.json()); }
+  } catch(e){ retry = true; }
+  if (retry){
+    if (++job.tries <= 4) fq.unshift(job); else job.rej(new Error("Finnhub is busy"));
+    fBack = Math.min(60000, (fBack || 4000) * 2);
+    await sleep(fBack);
   }
-  insiders = out.sort((a,b)=> (b.filed||"").localeCompare(a.filed||"") || b.n-a.n);
-  const f = $("ins-feed");
-  f.innerHTML = insiders.length ? insiders.slice(0,150).map(x =>
-    '<li class="'+(x.code==="P"?"buy":"sell")+(x.n>=10e6?' tier-3':'')+'"><span class="stripe"></span><div>'+
-    '<div class="line1"><span class="sym">'+esc(x.s)+'</span><span class="kind">'+(x.code==="P"?"insider buy":"insider sell")+'</span><span class="muted" style="font-size:12px">'+num(x.sh)+' sh @ $'+(+x.px).toFixed(2)+'</span></div>'+
-    '<div class="line2"><span>'+esc(x.name)+'</span><span>traded '+esc(x.date)+'</span><span>filed '+esc(x.filed)+'</span></div></div>'+
-    '<div><div class="usd">'+usd(x.n)+'</div><div class="ago">'+num(x.remain||0)+' left</div></div></li>'
-  ).join("") : '<li class="empty" style="display:block;padding:18px 16px">No open-market insider trades over $250K in the last 30 days for this watchlist.</li>';
+  setTimeout(() => { fBusy = false; fPump(); }, 1100);
+}
+const TTL = {quote:4*60e3, rec:12*3600e3, news:20*60e3, ins:6*3600e3, prof:14*864e5};
+async function fetchKind(s, kind){
+  const q = encodeURIComponent(s);
+  if (kind === "quote"){ const r = await fh("/quote?symbol="+q); if (!r || !r.c) throw new Error("no quote"); return {c:r.c, pc:r.pc, h:r.h, l:r.l}; }
+  if (kind === "rec"){ const r = await fh("/stock/recommendation?symbol="+q); return Array.isArray(r) && r[0] ? r[0] : null; }
+  if (kind === "news"){
+    const r = await fh("/company-news?symbol="+q+"&from="+isoDay(3)+"&to="+isoDay(0));
+    return (Array.isArray(r) ? r : []).sort((a, b) => b.datetime - a.datetime).slice(0, 25).map(x => ({h:x.headline, u:x.url, src:x.source, t:x.datetime}));
+  }
+  if (kind === "ins"){
+    const r = await fh("/stock/insider-transactions?symbol="+q+"&from="+isoDay(90));
+    return ((r && r.data) || []).filter(x => x.transactionCode === "P" || x.transactionCode === "S").slice(0, 150)
+      .map(x => ({n:x.name, c:x.transactionCode, sh:Math.abs(x.change || 0), px:+x.transactionPrice || 0, d:x.transactionDate, f:x.filingDate, left:x.share || 0}));
+  }
+  if (kind === "prof"){ const r = await fh("/stock/profile2?symbol="+q); return {name:(r && r.name) || "", ind:(r && r.finnhubIndustry) || ""}; }
+}
+// Queues whatever is stale: all quotes first, then analyst ratings, news, insiders, and company profiles for custom tickers.
+function refreshStocks(){
+  if (!S.key || keyBad || !isLeader) return;
+  for (const kind of ["quote","rec","news","ins","prof"]){
+    for (const s of S.watch){
+      if (kind !== "quote" && ETFS.has(s)) continue;
+      if (kind === "prof" && MARKET_OF[s]) continue;
+      const d = sd(s);
+      if (d.busy.has(kind) || Date.now() - (d[kind+"At"] || 0) < TTL[kind]) continue;
+      d.busy.add(kind);
+      fetchKind(s, kind).then(v => {
+        d[kind] = v; d[kind+"At"] = Date.now();
+        store.set("fh:"+kind+":"+s, {at:d[kind+"At"], v});
+        if (kind === "ins") renderStocksSoon();
+        renderSignalsSoon();
+      }).catch(e => {
+        if (e.message !== "reset") d[kind+"At"] = Date.now() - TTL[kind] + 5*60e3; // try again in 5 minutes
+      }).finally(() => d.busy.delete(kind));
+    }
+  }
+}
+function loadStockCache(){
+  for (const s of S.watch){
+    const d = sd(s);
+    for (const k of ["quote","rec","news","ins","prof"]){
+      const c = store.get("fh:"+k+":"+s, null);
+      if (c && c.at && c.at > (d[k+"At"] || 0)){ d[k] = c.v; d[k+"At"] = c.at; }
+    }
+  }
+}
+
+// ---------- Signals: analyst ratings, headline tone, whale prints, insiders and today's move ----------
+const WEIGHTS = {analysts:.30, news:.25, whales:.25, insiders:.10, momentum:.10};
+const COMP_LABEL = {analysts:"Analysts", news:"Headlines", whales:"Whale prints", insiders:"Insiders", momentum:"Today"};
+const POS = /\b(beats?|tops|topped|surges?|surged|soars?|soared|jumps?|jumped|rall(?:y|ies|ied)|record|upgrades?|upgraded|raises?|raised|outperforms?|bullish|strong(?:er)?|growth|wins?|approv(?:al|ed|es)|partnerships?|buybacks?|profits?|gains?|higher|boosts?|expands?|expansion|breakthrough|rebounds?|climbs?|optimistic|upside|accelerates?|exceeds?|exceeded|overweight)\b/g;
+const NEG = /\b(miss(?:es|ed)?|falls?|fell|drops?|dropped|plunges?|plunged|sinks?|sank|slumps?|downgrades?|downgraded|cuts?|lawsuits?|sues|sued|probes?|investigations?|recalls?|bearish|weak(?:er|ness)?|loss(?:es)?|layoffs?|fraud|halts?|declines?|declined|warns?|warning|lowers?|slides?|tumbles?|tumbled|delays?|bans?|crash(?:es)?|slowdown|concerns?|underperforms?|underweight|sell-?off|bankruptcy|default)\b/g;
+function tone(h){
+  const s = String(h || "").toLowerCase();
+  const p = (s.match(POS) || []).length, n = (s.match(NEG) || []).length;
+  return p + n ? (p - n) / (p + n) : null;
+}
+function flowToday(){
+  const day = nyDay(), F = {};
+  for (const b of blocks){
+    if (nyDay(b.t) !== day) continue;
+    const f = F[b.s] || (F[b.s] = {up:0, down:0, flat:0});
+    f[b.dir] = (f[b.dir] || 0) + b.n;
+  }
+  return F;
+}
+function scoreStock(s, F){
+  const d = SD[s] || {}, c = {};
+  const r = d.rec;
+  if (r){
+    const sb = r.strongBuy || 0, b = r.buy || 0, h = r.hold || 0, se = r.sell || 0, ss = r.strongSell || 0, tot = sb + b + h + se + ss;
+    // Most large caps carry a buy consensus, so score relative to a typical "moderate buy" rather than zero.
+    if (tot){ const raw = (2*sb + b - se - 2*ss) / (2*tot); c.analysts = {v:clamp((raw - 0.35) * 2.5), txt:Math.round((sb + b) / tot * 100)+"% buy ratings · "+tot+" analysts"}; }
+  }
+  if (d.news && d.news.length){
+    let sum = 0, wsum = 0, n = 0; const now = Date.now() / 1000;
+    for (const x of d.news){ const t = tone(x.h); if (t == null) continue; n++; const wt = Math.exp(-Math.max(0, now - x.t) / 3600 / 36); sum += t * wt; wsum += wt; }
+    if (n >= 2 && wsum > 0){ const v = clamp(sum / wsum); c.news = {v, txt:(v >= 0 ? "+" : "")+v.toFixed(2)+" tone · "+n+" of "+d.news.length+" headlines"}; }
+  }
+  const f = F[s];
+  if (f && f.up + f.down > 0) c.whales = {v:(f.up - f.down) / (f.up + f.down), txt:usd(f.up)+" upticks · "+usd(f.down)+" downticks"};
+  if (d.ins && d.ins.length){
+    let net = 0, gross = 0;
+    for (const x of d.ins){ const v = x.sh * x.px; gross += v; net += x.c === "P" ? v : -v; }
+    if (gross > 0) c.insiders = {v:clamp(net / 5e6), txt:"net "+(net >= 0 ? "+" : "")+usd(net)+" · 90 days"};
+  }
+  const q = d.quote, px = lastPx[s] || (q && q.c) || null;
+  let dp = null;
+  if (q && q.pc && px){ dp = (px / q.pc - 1) * 100; c.momentum = {v:clamp(dp / 4), txt:pct(dp, 2)+" today"}; }
+  let sum = 0, wsum = 0;
+  for (const k in c){ sum += c[k].v * WEIGHTS[k]; wsum += WEIGHTS[k]; }
+  return {score:wsum ? sum / wsum : null, comps:c, ready:ETFS.has(s) ? wsum >= 0.1 : wsum >= 0.3, px, dp};
+}
+function sigLabel(v){
+  if (v == null) return ["neu", "No data"];
+  const n = Math.round(v * 100), t = (n > 0 ? "+" : "")+n;
+  if (v >= 0.35) return ["bull", "Strong bullish "+t];
+  if (v >= 0.12) return ["bull", "Bullish "+t];
+  if (v <= -0.35) return ["bear", "Strong bearish "+t];
+  if (v <= -0.12) return ["bear", "Bearish "+t];
+  return ["neu", "Neutral "+t];
+}
+const fmtScore = v => v == null ? "—" : (v > 0 ? "+" : "")+Math.round(v * 100);
+const diverge = v => '<span class="diverge">'+(v == null ? "" : '<i style="'+(v >= 0 ? "left" : "right")+':50%;width:'+(Math.abs(v) * 50).toFixed(1)+'%;background:var(--'+(v >= 0 ? "buy" : "sell")+')"></i>')+'</span>';
+const leadRow = r => '<li><a class="tk" href="'+rh(r.s)+'" target="_blank" rel="noopener" title="Open '+esc(r.s)+' on Robinhood">'+esc(r.s)+'</a><span class="nm">'+esc(nameOf(r.s))+' · '+esc(marketOf(r.s))+'</span><span class="pill '+sigLabel(r.score)[0]+'">'+fmtScore(r.score)+'</span></li>';
+function sigRow(r, isOpen){
+  const [cls, txt] = r.ready ? sigLabel(r.score) : ["neu", "Loading"];
+  const news = ((SD[r.s] && SD[r.s].news) || []).filter(n => /^https?:\/\//.test(n.u || "")).slice(0, 3);
+  const comps = Object.keys(WEIGHTS).map(k => {
+    const c = r.comps[k];
+    return '<div class="comp"><span>'+COMP_LABEL[k]+'</span>'+diverge(c ? c.v : null)+'<span>'+(c ? esc(c.txt) : '<span class="faint">'+(k === "whales" ? "no block prints today" : ETFS.has(r.s) && k !== "momentum" ? "not used for ETFs" : "no data yet")+'</span>')+'</span></div>';
+  }).join("");
+  return '<details class="sig" data-s="'+esc(r.s)+'"'+(isOpen ? " open" : "")+'><summary>'+
+    '<a class="tk" href="'+rh(r.s)+'" target="_blank" rel="noopener" title="Open '+esc(r.s)+' on Robinhood">'+esc(r.s)+'</a>'+
+    '<span class="nm">'+esc(nameOf(r.s))+'</span>'+
+    '<span class="pxv">'+(r.px ? "$"+(+r.px).toFixed(2) : "—")+(r.dp != null ? ' <b class="'+(r.dp >= 0 ? "pos" : "neg")+'">'+pct(r.dp)+'</b>' : "")+'</span>'+
+    '<span class="pill '+cls+'">'+txt+'</span></summary>'+
+    '<div class="why">'+comps+
+    (news.length ? '<ul class="heads">'+news.map(n => '<li><a href="'+esc(n.u)+'" target="_blank" rel="noopener nofollow">'+esc(n.h)+'</a> <span class="faint">'+esc(n.src || "")+' · '+ago(n.t * 1000)+'</span></li>').join("")+'</ul>' : "")+
+    '<a class="sm" href="'+rh(r.s)+'" target="_blank" rel="noopener">Open '+esc(r.s)+' on Robinhood ↗</a></div></details>';
+}
+function renderSignals(){
+  const has = !!S.key;
+  $("sig-setup").hidden = has; $("sig-body").hidden = !has;
+  if (!has){ $("sig-meta").textContent = "Needs a Finnhub key"; $("b-signals").textContent = ""; return; }
+  const F = flowToday();
+  const rows = S.watch.map(s => ({s, ...scoreStock(s, F)}));
+  let need = 0, have = 0, latest = 0;
+  for (const s of S.watch) for (const k of ETFS.has(s) ? ["quote"] : ["quote","rec","news","ins"]){
+    need++;
+    const at = SD[s] && SD[s][k+"At"];
+    if (at && SD[s][k] !== undefined){ have++; latest = Math.max(latest, at); }
+  }
+  $("sig-meta").textContent = keyBad ? "Finnhub didn't accept the key" : have < need ? "Loading market data "+have+"/"+need : S.watch.length+" tickers · updated "+ago(latest);
+  const groups = new Map();
+  for (const r of rows){ const m = marketOf(r.s); if (!groups.has(m)) groups.set(m, []); groups.get(m).push(r); }
+  const rank = r => r.ready && r.score != null ? r.score : -9;
+  const markets = [...groups].map(([m, list]) => {
+    const rd = list.filter(r => r.ready && r.score != null);
+    return {m, list:list.sort((a, b) => rank(b) - rank(a)), avg:rd.length ? rd.reduce((a, r) => a + r.score, 0) / rd.length : null};
+  }).sort((a, b) => (b.avg ?? -9) - (a.avg ?? -9));
+  const ranked = rows.filter(r => r.ready && r.score != null && !ETFS.has(r.s));
+  const bull = ranked.filter(r => r.score >= 0.12).sort((a, b) => b.score - a.score);
+  const bear = ranked.filter(r => r.score <= -0.12).sort((a, b) => a.score - b.score);
+  const wait = have < need ? "Still loading…" : null;
+  $("b-signals").textContent = bull.length ? bull.length+" bullish" : "";
+  $("sig-bull").innerHTML = bull.length ? bull.slice(0, 6).map(leadRow).join("") : '<li class="empty">'+(wait || "Nothing scores bullish right now.")+'</li>';
+  $("sig-bear").innerHTML = bear.length ? bear.slice(0, 6).map(leadRow).join("") : '<li class="empty">'+(wait || "Nothing scores bearish right now.")+'</li>';
+  $("sig-heat").innerHTML = markets.map(m => '<li><span>'+esc(m.m)+'</span>'+diverge(m.avg)+'<span class="mono '+(m.avg > 0 ? "pos" : m.avg < 0 ? "neg" : "muted")+'">'+fmtScore(m.avg)+'</span></li>').join("");
+  const open = new Set([...document.querySelectorAll("#sig-markets details[open]")].map(d => d.dataset.s));
+  $("sig-markets").innerHTML = markets.map(m =>
+    '<div class="market"><div class="mhead"><h3>'+esc(m.m)+'</h3><span class="pill '+sigLabel(m.avg)[0]+'">'+fmtScore(m.avg)+'</span></div>'+m.list.map(r => sigRow(r, open.has(r.s))).join("")+'</div>'
+  ).join("");
 }
 
 // ---------- settings ----------
-function fillSettings(){ $("sol-th").value = S.solTh; $("stk-th").value = S.stkTh; $("watch").value = S.watch.join(", "); $("key").value = S.key; $("sol-meta").textContent = "≥ "+usd(S.solTh); $("stk-meta").textContent = "≥ "+usd(S.stkTh)+" prints"; $("t-count-s").textContent = "swaps ≥ "+usd(S.solTh); }
-function saveKey(k){ S.key = k.trim(); store.set("key", S.key); fillSettings(); connectStocks(); }
+function fillSettings(){
+  $("sol-th").value = S.solTh; $("min-vol").value = S.minVol; $("stk-th").value = S.stkTh;
+  $("watch").value = S.watch.join(", "); $("key").value = S.key;
+}
+function saveKey(k){
+  S.key = k.trim(); store.set("key", S.key);
+  resetFinnhub(); fillSettings(); loadStockCache(); connectStocks(); refreshStocks();
+  renderStocks(); renderSignals();
+}
 $("key-save-inline").onclick = () => saveKey($("key-inline").value);
-$("key-inline").addEventListener("keydown", e => { if (e.key==="Enter") saveKey($("key-inline").value); });
-$("key-clear").onclick = () => { $("key").value=""; saveKey(""); };
+$("key-inline").addEventListener("keydown", e => { if (e.key === "Enter") saveKey($("key-inline").value); });
+$("key-clear").onclick = () => { $("key").value = ""; saveKey(""); };
+$("sig-add-key").onclick = () => { showTab("stocks"); $("key-inline").focus(); };
 $("save").onclick = () => {
-  const oldSol = S.solTh, oldWatch = S.watch.join(), oldKey = S.key;
+  const old = {solTh:S.solTh, minVol:S.minVol, key:S.key, watch:S.watch.join()};
   S.solTh = Math.max(500, +$("sol-th").value || 5000);
+  S.minVol = Math.max(10000, +$("min-vol").value || 100000);
   S.stkTh = Math.max(50000, +$("stk-th").value || 1000000);
-  S.watch = $("watch").value.split(/[\s,]+/).map(s=>s.trim().toUpperCase()).filter(Boolean).slice(0,50);
+  S.watch = [...new Set($("watch").value.split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(s => /^[A-Z][A-Z.\-]{0,9}$/.test(s)))].slice(0, 50);
+  if (!S.watch.length) S.watch = DEFAULT_WATCH.slice();
   S.key = $("key").value.trim();
-  for (const k of ["solTh","stkTh","watch","key"]) store.set(k, S[k]);
+  for (const k of ["solTh","minVol","stkTh","watch","key"]) store.set(k, S[k]);
   fillSettings();
-  if (S.solTh < oldSol || S.solTh !== oldSol){ firstPass.clear(); }
-  renderSol(); renderBlocks();
-  if (S.watch.join()!==oldWatch || S.key!==oldKey) connectStocks();
+  if (S.solTh < old.solTh){ for (const p of pools.values()) p.lastScan = 0; scannedOnce.clear(); }
+  if (S.minVol !== old.minVol){ for (const p of [...pools.values()]) if (!p.pinned && !qualifies(p)) pools.delete(p.addr); discoverGT(); discoverDexScreener(); }
+  if (S.key !== old.key) resetFinnhub();
+  if (S.watch.join() !== old.watch || S.key !== old.key){ loadStockCache(); connectStocks(); refreshStocks(); }
+  renderSol(); renderStocks(); renderSignals(); updateSolStatus();
+  $("save-msg").textContent = "Saved.";
 };
 $("extra-add").onclick = async () => {
   const m = $("extra").value.trim(); if (!m) return;
   $("extra-msg").textContent = "Looking up…";
-  if (await addTokenPool(m, false)){ if (!S.extra.includes(m)){ S.extra.push(m); store.set("extra", S.extra); } $("extra").value=""; }
+  if (await addTokenPool(m, false)){ if (!S.extra.includes(m)){ S.extra.push(m); store.set("extra", S.extra); } $("extra").value = ""; }
 };
 
-// ---------- tick ----------
+// ---------- start, and hand off between tabs ----------
+function followerSync(){
+  loadFeed(true); loadBlocks(); loadStockCache();
+  const st = store.get("solStatus", null);
+  if (st){ $("t-pools").textContent = st.pools; $("t-pools-s").textContent = "scanned by your other tab"; }
+  setStatus("st-sol", "live", "Solana: mirroring your other Whale Sonar tab");
+  setStatus("st-stk", S.key ? "live" : "", S.key ? "Stocks: mirroring your other tab" : "Stocks: add a Finnhub key");
+  renderSol(); renderStocks(); renderSignals();
+}
+function startLeader(){
+  loadBlocks(); connectStocks();
+  discoverDexScreener().then(pulse);
+  discoverGT();
+  if (!scanning) scanLoop();
+  refreshStocks(); updateSolStatus();
+}
+function stopLeader(){ if (ws){ ws.onclose = null; try{ ws.close(); }catch{} ws = null; } clearTimeout(wsTimer); }
+setInterval(() => {
+  const was = isLeader;
+  isLeader = claimLeader();
+  if (isLeader && !was) startLeader();
+  if (!isLeader && was) stopLeader();
+  if (!isLeader) followerSync();
+}, 5000);
+
+fillSettings(); syncChips();
+$("st-mkt").textContent = marketState();
+loadFeed(false); loadBlocks(); loadStockCache();
+showTab(tab);
+renderSol(); renderStocks(); renderSignals();
+if (isLeader) startLeader(); else followerSync();
+setInterval(() => { if (isLeader) discoverGT(); }, 5*60e3);
+setInterval(() => { if (isLeader) discoverDexScreener().then(pulse); }, 2*60e3);
+setInterval(() => { if (isLeader) pulse(); }, 15e3);
+setInterval(() => { if (isLeader) refreshStocks(); }, 20e3);
+setInterval(renderSignals, 30e3);
 setInterval(() => {
   for (const el of document.querySelectorAll(".ago[data-t]")) el.textContent = ago(+el.dataset.t);
   $("st-mkt").textContent = marketState();
-}, 15000);
-setInterval(loadTrending, 5*60*1000);
-setInterval(loadInsiders, 30*60*1000);
-
-fillSettings();
-$("st-mkt").textContent = marketState();
-connectStocks();
-renderBlocks();
-loadTrending().then(scanNext);
+  updateSolMeta();
+}, 5e3);
 })();
 </script>
 </body>
