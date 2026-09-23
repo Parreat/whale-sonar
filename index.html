@@ -712,29 +712,36 @@ const solTrades = new Map(); // trade id -> trade
 const scannedOnce = new Set();
 let walletFilter = null, discovering = false, scanning = false, pulsing = false, lastScanAt = 0;
 
-const gq = []; let gBusy = false, gBack = 0, gtLimited = false;
+// GeckoTerminal allows about 30 requests a minute per network, shared with anything else on it.
+// Space requests 2.3s apart, widen the gap when rate-limited and narrow it again as requests succeed.
+const GAP_MIN = 2300, GAP_MAX = 15000;
+const gq = []; let gBusy = false, gGap = GAP_MIN, gtLimited = false;
 function gt(path){ return new Promise((res, rej) => { gq.push({path, res, rej, tries:0}); gPump(); }); }
 async function gPump(){
   if (gBusy || !gq.length) return;
   gBusy = true;
   const job = gq.shift();
   // GeckoTerminal's 429 carries no CORS headers, so the browser reports it as a network error.
-  // Treat both the same: wait (longer each time) and retry.
   let limited = false;
   try {
     const r = await fetch(GT + job.path, {headers:{accept:"application/json"}});
     if (r.status === 429) limited = true;
     else if (!r.ok) job.rej(new Error("HTTP "+r.status));
-    else { gBack = 0; const j = await r.json(); if (gtLimited){ gtLimited = false; updateSolStatus(); renderSolSoon(); } job.res(j); }
+    else {
+      gGap = Math.max(GAP_MIN, gGap - 250);
+      const j = await r.json();
+      if (gtLimited){ gtLimited = false; updateSolStatus(); renderSolSoon(); }
+      job.res(j);
+    }
   } catch(e){ limited = true; }
   if (limited){
+    gGap = Math.min(GAP_MAX, Math.round(gGap * 1.6));
     if (!gtLimited){ gtLimited = true; renderSolSoon(); }
     if (++job.tries <= 6) gq.unshift(job); else job.rej(new Error("GeckoTerminal is busy"));
-    gBack = Math.min(60000, (gBack || 5000) * 2);
-    setStatus("st-sol", "warn", "Solana: swap source busy, retrying in "+Math.round(gBack/1000)+"s");
-    await sleep(gBack);
+    setStatus("st-sol", "warn", "Solana: swap source is rate-limiting, slowing down");
+    await sleep(gGap * 2);
   }
-  setTimeout(() => { gBusy = false; gPump(); }, 2300);
+  setTimeout(() => { gBusy = false; gPump(); }, gGap);
 }
 
 function poolFromGT(p, src){
@@ -754,13 +761,15 @@ function upsertPool(o){
 async function discoverGT(){
   if (discovering || !isLeader) return;
   discovering = true;
-  for (const [path, src] of [
+  const lists = [
     ["/networks/solana/trending_pools?page=1", "trending"],
     ["/networks/solana/new_pools?page=1", "new"],
     ["/networks/solana/pools?page=1", "top"],
     ["/networks/solana/trending_pools?page=2", "trending"],
     ["/networks/solana/pools?page=2", "top"]
-  ]){
+  ];
+  // When rate-limited, keep the scarce requests for whale scans; DexScreener still finds pools.
+  for (const [path, src] of gGap > 5000 ? lists.slice(0, 2) : lists){
     if (!isLeader) break;
     try {
       const r = await gt(path);
