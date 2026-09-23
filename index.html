@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Whale Sonar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  color-scheme: dark;
+  --ground:#081116; --surface:#0E1C23; --surface-2:#132630; --line:#1D3440;
+  --text:#D6E5E9; --muted:#7B98A2; --faint:#4A6571;
+  --sonar:#3FD0C9; --sonar-dim:rgba(63,208,201,.14);
+  --buy:#5BD69A; --sell:#F2667A; --stock:#F2B84B;
+  --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body:"IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    color-scheme: light;
+    --ground:#EEF4F5; --surface:#FFFFFF; --surface-2:#F4F8F9; --line:#D3E0E4;
+    --text:#0D2129; --muted:#557079; --faint:#93AAB2;
+    --sonar:#0E8F8A; --sonar-dim:rgba(14,143,138,.12);
+    --buy:#16915A; --sell:#CF3450; --stock:#B7790B;
+  }
+}
+:root[data-theme="light"]{
+  color-scheme: light;
+  --ground:#EEF4F5; --surface:#FFFFFF; --surface-2:#F4F8F9; --line:#D3E0E4;
+  --text:#0D2129; --muted:#557079; --faint:#93AAB2;
+  --sonar:#0E8F8A; --sonar-dim:rgba(14,143,138,.12);
+  --buy:#16915A; --sell:#CF3450; --stock:#B7790B;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--ground);color:var(--text);font:14px/1.5 var(--body);padding:0 16px 48px;}
+a{color:inherit}
+.wrap{max-width:1320px;margin:0 auto}
+header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:20px 16px;border-bottom:1px solid var(--line)}
+.brand{font:800 28px/1 var(--display);letter-spacing:-.02em;display:flex;align-items:center;gap:10px}
+.brand svg{width:30px;height:30px}
+.brand small{font:500 12px var(--body);color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-left:4px}
+.status{display:flex;gap:14px;margin-left:auto;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);margin-right:6px;vertical-align:1px}
+.dot.live{background:var(--buy);box-shadow:0 0 0 0 var(--buy);animation:pulse 2s infinite}
+.dot.warn{background:var(--stock)}
+.dot.err{background:var(--sell)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--buy) 60%,transparent)}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
+button,input,select{font:inherit;color:inherit}
+.btn{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer}
+.btn:hover{border-color:var(--sonar)}
+.btn.primary{background:var(--sonar);color:var(--ground);border-color:var(--sonar);font-weight:600}
+:focus-visible{outline:2px solid var(--sonar);outline-offset:2px}
+
+.hero{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:24px;padding-block:24px}
+.scope{position:relative;aspect-ratio:1;max-width:100%}
+.scope canvas{width:100%;height:100%;display:block}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px;justify-content:center}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:0}
+.legend i.ring{background:transparent;border:2px solid var(--stock)}
+.side{display:flex;flex-direction:column;gap:18px;min-width:0}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.tile{background:var(--surface);padding:14px 16px}
+.tile .k{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.tile .v{font:600 22px/1.25 var(--mono);font-variant-numeric:tabular-nums;margin-top:4px;overflow-wrap:anywhere}
+.tile .s{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.flow{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.flow-head{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);gap:8px;flex-wrap:wrap}
+.bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surface-2);margin-top:10px}
+.bar .b{background:var(--buy);transition:width .6s}
+.bar .s{background:var(--sell);transition:width .6s}
+.whales{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+h2{font:800 18px/1.2 var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+h3{font:600 12px var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}
+.wl{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:4px 20px}
+.wl li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:baseline;padding:5px 0;border-bottom:1px dashed var(--line);font-size:13px;cursor:pointer}
+.wl li:hover .addr{color:var(--sonar)}
+.wl .rank{font:600 11px var(--mono);color:var(--faint)}
+.addr{font-family:var(--mono);font-size:12px}
+.wl .net{font:600 12px var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.empty{color:var(--muted);font-size:13px;padding:18px 0}
+
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;min-width:0}
+.panel-head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.panel-head .meta{font-size:12px;color:var(--muted);margin-left:auto}
+.chip{font:600 11px var(--mono);padding:2px 7px;border-radius:4px;background:var(--sonar-dim);color:var(--sonar)}
+.chip.stk{background:color-mix(in srgb,var(--stock) 15%,transparent);color:var(--stock)}
+.tabs{display:flex;gap:4px;padding:8px 16px 0;border-bottom:1px solid var(--line)}
+.tab{background:none;border:none;border-bottom:2px solid transparent;padding:6px 10px;cursor:pointer;color:var(--muted);font-weight:500}
+.tab[aria-selected="true"]{color:var(--text);border-color:var(--stock)}
+.filterbar{padding:8px 16px;font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--line)}
+.feed{list-style:none;margin:0;padding:0;max-height:640px;overflow-y:auto}
+.feed li{display:grid;grid-template-columns:4px 1fr auto;gap:0 12px;padding:10px 16px 10px 0;border-bottom:1px solid var(--line)}
+.feed li.new{animation:flash 1.6s ease-out}
+@keyframes flash{from{background:var(--sonar-dim)}to{background:transparent}}
+.feed .stripe{border-radius:0 2px 2px 0}
+.feed .buy .stripe,.feed li.buy .stripe{background:var(--buy)}
+.feed li.sell .stripe{background:var(--sell)}
+.feed li.up .stripe{background:var(--buy)}
+.feed li.down .stripe{background:var(--sell)}
+.feed li.flat .stripe{background:var(--stock)}
+.feed .line1{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.feed .sym{font:600 14px var(--body)}
+.feed .kind{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:3px}
+.buy .kind,.up .kind{color:var(--buy);background:color-mix(in srgb,var(--buy) 14%,transparent)}
+.sell .kind,.down .kind{color:var(--sell);background:color-mix(in srgb,var(--sell) 14%,transparent)}
+.flat .kind{color:var(--stock);background:color-mix(in srgb,var(--stock) 14%,transparent)}
+.feed .line2{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;margin-top:2px}
+.feed .line2 a{text-decoration:none;border-bottom:1px dotted var(--faint)}
+.feed .line2 a:hover{color:var(--sonar)}
+.feed .usd{font:600 15px var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.feed .ago{font-size:11px;color:var(--muted);text-align:right}
+.tier-3 .usd{color:var(--sonar)}
+.setup{padding:20px 16px;display:flex;flex-direction:column;gap:10px;font-size:13px}
+.setup ol{margin:0;padding-left:20px;color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input[type=text],input[type=password],input[type=number]{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:6px 10px;min-width:0;flex:1}
+details.settings{margin-top:24px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;padding:0 16px 18px}
+.sgrid label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
+.note{font-size:12px;color:var(--muted);margin-top:24px;max-width:75ch}
+@media (max-width:900px){
+  .hero,.cols{grid-template-columns:1fr}
+  .scope{max-width:360px;margin:0 auto;width:100%}
+  .tiles{grid-template-columns:repeat(2,1fr)}
+  .wl{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){ .dot.live,.feed li.new{animation:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="14" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><circle cx="16" cy="16" r="8" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5"/><path d="M16 16 L27 8" stroke="var(--sonar)" stroke-width="2" stroke-linecap="round"/><circle cx="22" cy="20" r="2.5" fill="var(--sonar)"/></svg>
+    Whale Sonar <small>stocks · solana memes</small>
+  </div>
+  <div class="status">
+    <span id="st-sol"><span class="dot"></span>Solana: starting</span>
+    <span id="st-stk"><span class="dot"></span>Stocks: no key</span>
+    <span id="st-mkt" class="muted"></span>
+  </div>
+</header>
+
+<section class="hero">
+  <div>
+    <div class="scope"><canvas id="sonar" aria-label="Sonar view of recent whale trades"></canvas></div>
+    <div class="legend"><span><i style="background:var(--buy)"></i>Meme buy</span><span><i style="background:var(--sell)"></i>Meme sell</span><span><i class="ring"></i>Stock block</span></div>
+  </div>
+  <div class="side">
+    <div class="tiles">
+      <div class="tile"><div class="k">Meme whales · 1h</div><div class="v" id="t-count">0</div><div class="s" id="t-count-s">trades over threshold</div></div>
+      <div class="tile"><div class="k">Largest meme swap</div><div class="v" id="t-big">—</div><div class="s" id="t-big-s">last 24h scanned</div></div>
+      <div class="tile"><div class="k">Stock blocks · today</div><div class="v" id="t-blocks">0</div><div class="s" id="t-blocks-s">prints over threshold</div></div>
+      <div class="tile"><div class="k">Pools on sonar</div><div class="v" id="t-pools">0</div><div class="s" id="t-pools-s">trending on Solana</div></div>
+    </div>
+    <div class="flow">
+      <div class="flow-head"><span>Meme whale flow · last hour</span><span id="flow-txt">—</span></div>
+      <div class="bar"><div class="b" id="flow-b" style="width:50%"></div><div class="s" id="flow-s" style="width:50%"></div></div>
+    </div>
+    <div class="whales">
+      <h3>Biggest Solana wallets on the feed</h3>
+      <ul class="wl" id="wallets"><li class="empty" style="grid-column:1/-1;display:block;border:0;cursor:default">Scanning trending pools…</li></ul>
+    </div>
+  </div>
+</section>
+
+<section class="cols">
+  <div class="panel">
+    <div class="panel-head"><span class="chip">SOL</span><h2>Meme coin whale swaps</h2><span class="meta" id="sol-meta">≥ $5K</span></div>
+    <div class="filterbar" id="sol-filter" hidden>Showing wallet <span class="addr" id="sol-filter-addr"></span><button class="btn" id="sol-clear" style="padding:2px 8px;margin-left:auto">Show all</button></div>
+    <ul class="feed" id="sol-feed"><li class="empty" style="display:block;padding:18px 16px">Finding trending meme pools and pulling whale swaps. The first scan takes about a minute.</li></ul>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><span class="chip stk">NYSE · NASDAQ</span><h2>Stock whales</h2><span class="meta" id="stk-meta">≥ $1M prints</span></div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-blocks" aria-selected="true">Live block prints</button>
+      <button class="tab" role="tab" id="tab-insider" aria-selected="false">Insider buys &amp; sells</button>
+    </div>
+    <div id="stk-setup" class="setup">
+      <strong>Connect a free Finnhub key to stream stock trades</strong>
+      <ol>
+        <li>Sign up at <a href="https://finnhub.io/register" target="_blank" rel="noopener">finnhub.io/register</a>. It's free and doesn't need a card.</li>
+        <li>Copy the API key from your dashboard and paste it here. It stays in this browser only.</li>
+      </ol>
+      <div class="row"><input type="password" id="key-inline" placeholder="Finnhub API key" autocomplete="off"><button class="btn primary" id="key-save-inline">Connect</button></div>
+    </div>
+    <ul class="feed" id="stk-feed" hidden></ul>
+    <ul class="feed" id="ins-feed" hidden></ul>
+  </div>
+</section>
+
+<details class="settings" id="settings">
+  <summary>Settings: thresholds, watchlist, extra pools</summary>
+  <div class="sgrid">
+    <label>Solana whale threshold (USD per swap)
+      <input type="number" id="sol-th" min="500" step="500">
+    </label>
+    <label>Stock block threshold (USD notional per print)
+      <input type="number" id="stk-th" min="50000" step="50000">
+    </label>
+    <label>Stock watchlist (comma separated, max 50)
+      <input type="text" id="watch">
+    </label>
+    <label>Finnhub API key
+      <div class="row"><input type="password" id="key" autocomplete="off"><button class="btn" id="key-clear">Clear</button></div>
+    </label>
+    <label>Watch an extra Solana token (mint address)
+      <div class="row"><input type="text" id="extra" placeholder="e.g. DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"><button class="btn" id="extra-add">Add</button></div>
+      <span id="extra-msg"></span>
+    </label>
+  </div>
+  <div class="row" style="padding:0 16px 18px"><button class="btn primary" id="save">Apply settings</button></div>
+</details>
+
+<p class="note">Solana swaps come from GeckoTerminal. The site scans the top trending Solana pools one at a time to stay under the free rate limit, so a pool refreshes about once a minute. Stock prints come from Finnhub's live trade stream. Trades don't say who bought or sold, so each print is tagged with the tick test: uptick means it traded above the last price, which suggests a buyer. Insider trades come from SEC Form 4 filings. None of this is financial advice.</p>
+</div>
+
+<script>
+(() => {
+"use strict";
+// ---------- storage & settings ----------
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem("ws:"+k); return v==null ? d : JSON.parse(v); }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem("ws:"+k, JSON.stringify(v)); }catch{} }
+};
+const S = {
+  solTh: store.get("solTh", 5000),
+  stkTh: store.get("stkTh", 1000000),
+  watch: store.get("watch", ["SPY","QQQ","NVDA","TSLA","AAPL","MSFT","AMZN","META","AMD","GOOGL","PLTR","COIN","MSTR","IWM","AVGO"]),
+  key: store.get("key", ""),
+  extra: store.get("extra", [])
+};
+const $ = id => document.getElementById(id);
+const GT = "https://api.geckoterminal.com/api/v2";
+const SKIP_MINTS = new Set(["So11111111111111111111111111111111111111112","EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"]);
+
+// ---------- helpers ----------
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function usd(n){
+  const a = Math.abs(n);
+  if (a >= 1e9) return "$" + (n/1e9).toFixed(2) + "B";
+  if (a >= 1e6) return "$" + (n/1e6).toFixed(2) + "M";
+  if (a >= 1e3) return "$" + (n/1e3).toFixed(1) + "K";
+  return "$" + n.toFixed(0);
+}
+function num(n){ const a=Math.abs(n); if(a>=1e9)return (n/1e9).toFixed(2)+"B"; if(a>=1e6)return (n/1e6).toFixed(2)+"M"; if(a>=1e3)return (n/1e3).toFixed(1)+"K"; return n.toLocaleString(undefined,{maximumFractionDigits:2}); }
+function ago(t){
+  const s = Math.max(0, (Date.now()-t)/1000);
+  if (s < 60) return Math.floor(s)+"s ago";
+  if (s < 3600) return Math.floor(s/60)+"m ago";
+  if (s < 86400) return Math.floor(s/3600)+"h ago";
+  return Math.floor(s/86400)+"d ago";
+}
+const short = a => a ? a.slice(0,4)+"…"+a.slice(-4) : "";
+function hash(str){ let h=2166136261; for(const c of str){ h^=c.charCodeAt(0); h=Math.imul(h,16777619); } return (h>>>0); }
+function setStatus(id, cls, text){ const el=$(id); el.innerHTML = '<span class="dot '+cls+'"></span>'+esc(text); }
+
+// ---------- sonar ----------
+const pings = []; // {angle, t, usd, side:'buy'|'sell'|'stock'}
+function addPing(label, t, value, side){
+  if (Date.now() - t > 15*60*1000) return;
+  pings.push({angle: (hash(label)%3600)/3600*Math.PI*2, t, usd:value, side});
+  if (pings.length > 300) pings.splice(0, pings.length-300);
+}
+const cv = $("sonar"), cx = cv.getContext("2d");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function cssv(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function drawSonar(now){
+  const dpr = devicePixelRatio||1, w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w*dpr)) { cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+  cx.setTransform(dpr,0,0,dpr,0,0);
+  cx.clearRect(0,0,w,h);
+  const r = Math.min(w,h)/2 - 6, ox = w/2, oy = h/2;
+  const C = {sonar:cssv("--sonar"), line:cssv("--line"), buy:cssv("--buy"), sell:cssv("--sell"), stock:cssv("--stock"), muted:cssv("--muted"), surface:cssv("--surface")};
+  cx.fillStyle = C.surface; cx.beginPath(); cx.arc(ox,oy,r,0,Math.PI*2); cx.fill();
+  cx.strokeStyle = C.line; cx.lineWidth = 1;
+  for (let i=1;i<=4;i++){ cx.beginPath(); cx.arc(ox,oy,r*i/4,0,Math.PI*2); cx.stroke(); }
+  for (let i=0;i<12;i++){ const a=i/12*Math.PI*2; cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(ox+Math.cos(a)*r, oy+Math.sin(a)*r); cx.stroke(); }
+  cx.fillStyle = C.muted; cx.font = "10px " + cssv("--mono");
+  ["4m","8m","11m","15m"].forEach((l,i)=>{ cx.fillText(l, ox+4, oy - r*(i+1)/4 + 12); });
+  const sweep = reduce ? -Math.PI/4 : ((now/6000)%1)*Math.PI*2 - Math.PI/2;
+  if (!reduce){
+    const g = cx.createConicGradient ? cx.createConicGradient(sweep - 0.9, ox, oy) : null;
+    if (g){ g.addColorStop(0,"transparent"); g.addColorStop(0.143, C.sonar + "55"); g.addColorStop(0.144,"transparent"); cx.fillStyle=g; cx.beginPath(); cx.moveTo(ox,oy); cx.arc(ox,oy,r,sweep-0.9,sweep); cx.closePath(); cx.fill(); }
+  }
+  cx.strokeStyle = C.sonar; cx.lineWidth = 1.5; cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(ox+Math.cos(sweep)*r, oy+Math.sin(sweep)*r); cx.stroke();
+  const horizon = 15*60*1000, t0 = Date.now();
+  for (const p of pings){
+    const age = t0 - p.t; if (age > horizon || age < -60000) continue;
+    const rr = Math.max(0.04, age/horizon) * r;
+    const x = ox + Math.cos(p.angle)*rr, y = oy + Math.sin(p.angle)*rr;
+    const size = Math.max(2.5, Math.min(16, Math.log10(Math.max(p.usd,10)) * 3 - 8));
+    let d = ((sweep - p.angle) % (Math.PI*2) + Math.PI*2) % (Math.PI*2);
+    const glow = reduce ? 0.6 : Math.max(0.35, 1 - d/(Math.PI*2)*1.3);
+    cx.globalAlpha = glow * (1 - age/horizon*0.6);
+    const col = p.side==="buy" ? C.buy : p.side==="sell" ? C.sell : C.stock;
+    if (p.side==="stock"){ cx.strokeStyle = col; cx.lineWidth = 2; cx.beginPath(); cx.arc(x,y,size,0,Math.PI*2); cx.stroke(); }
+    else { cx.fillStyle = col; cx.beginPath(); cx.arc(x,y,size,0,Math.PI*2); cx.fill(); }
+    cx.globalAlpha = 1;
+  }
+  requestAnimationFrame(drawSonar);
+}
+requestAnimationFrame(drawSonar);
+
+// ---------- Solana: GeckoTerminal ----------
+const pools = new Map(); // addr -> {addr, name, sym, mint, idx}
+const solTrades = new Map(); // id -> trade
+let poolOrder = [], poolCursor = 0, walletFilter = null, firstPass = new Set();
+const queue = []; let busy = false;
+function gt(path){ return new Promise((res, rej) => { queue.push({path,res,rej}); pump(); }); }
+async function pump(){
+  if (busy || !queue.length) return;
+  busy = true;
+  const {path,res,rej} = queue.shift();
+  try {
+    const r = await fetch(GT + path, {headers:{accept:"application/json"}});
+    if (r.status === 429) { queue.unshift({path,res,rej}); setStatus("st-sol","warn","Solana: rate-limited, backing off"); await new Promise(z=>setTimeout(z,15000)); }
+    else if (!r.ok) rej(new Error("HTTP "+r.status));
+    else res(await r.json());
+  } catch(e){ rej(e); }
+  setTimeout(()=>{ busy=false; pump(); }, 2300);
+}
+async function loadTrending(){
+  try {
+    const [p1, p2] = await Promise.all([gt("/networks/solana/trending_pools?page=1"), gt("/networks/solana/trending_pools?page=2")]);
+    const list = [...(p1.data||[]), ...(p2.data||[])];
+    for (const p of list){
+      const mint = (p.relationships?.base_token?.data?.id||"").replace(/^solana_/,"");
+      if (SKIP_MINTS.has(mint)) continue;
+      const a = p.attributes;
+      if (!pools.has(a.address)) pools.set(a.address, {addr:a.address, name:a.name, sym:(a.name||"").split(" / ")[0], mint});
+    }
+    for (const m of S.extra) await addTokenPool(m, true);
+    poolOrder = [...pools.keys()];
+    $("t-pools").textContent = pools.size;
+    setStatus("st-sol","live","Solana: live");
+  } catch(e){ setStatus("st-sol","err","Solana: can't reach GeckoTerminal ("+e.message+")"); }
+}
+async function addTokenPool(mint, quiet){
+  try{
+    const r = await gt("/networks/solana/tokens/"+encodeURIComponent(mint)+"/pools?page=1");
+    const p = (r.data||[])[0]; if (!p) throw new Error("no pools found");
+    const a = p.attributes;
+    pools.set(a.address, {addr:a.address, name:a.name, sym:(a.name||"").split(" / ")[0], mint, pinned:true});
+    poolOrder = [...pools.keys()]; $("t-pools").textContent = pools.size;
+    if (!quiet) $("extra-msg").textContent = "Added "+a.name+".";
+    return true;
+  }catch(e){ if(!quiet) $("extra-msg").textContent = "Couldn't add that token: "+e.message; return false; }
+}
+async function scanNext(){
+  if (!poolOrder.length){ setTimeout(scanNext, 3000); return; }
+  const addr = poolOrder[poolCursor % poolOrder.length]; poolCursor++;
+  const pool = pools.get(addr);
+  if (!firstPass.has(addr)) setStatus("st-sol","live","Solana: scanning "+Math.min(poolCursor,poolOrder.length)+"/"+poolOrder.length);
+  else setStatus("st-sol","live","Solana: live · "+pools.size+" pools");
+  try{
+    const r = await gt("/networks/solana/pools/"+addr+"/trades?trade_volume_in_usd_greater_than="+Math.round(S.solTh));
+    let added = 0;
+    for (const t of (r.data||[])){
+      if (solTrades.has(t.id)) continue;
+      const a = t.attributes, buy = a.kind === "buy";
+      const tr = {
+        id:t.id, pool:addr, sym:pool.sym, mint:pool.mint, t:Date.parse(a.block_timestamp), kind:a.kind,
+        usd:+a.volume_in_usd, wallet:a.tx_from_address, tx:a.tx_hash,
+        amount: buy ? +a.to_token_amount : +a.from_token_amount,
+        fresh: firstPass.has(addr)
+      };
+      solTrades.set(t.id, tr); added++;
+      addPing(pool.sym, tr.t, tr.usd, buy?"buy":"sell");
+    }
+    firstPass.add(addr);
+    if (added) renderSol();
+  }catch(e){ /* skip pool this round */ }
+  setTimeout(scanNext, 50);
+}
+function renderSol(){
+  // prune: keep newest 600
+  let all = [...solTrades.values()].filter(t => t.usd >= S.solTh).sort((a,b)=>b.t-a.t);
+  if (solTrades.size > 800){ for (const t of [...solTrades.values()].sort((a,b)=>a.t-b.t).slice(0, solTrades.size-800)) solTrades.delete(t.id); }
+  const shown = (walletFilter ? all.filter(t=>t.wallet===walletFilter) : all).slice(0,200);
+  const feed = $("sol-feed");
+  if (!shown.length){ feed.innerHTML = '<li class="empty" style="display:block;padding:18px 16px">No swaps over '+usd(S.solTh)+' yet. Still scanning.</li>'; }
+  else feed.innerHTML = shown.map(t => {
+    const tier = t.usd >= S.solTh*10 ? "tier-3" : "";
+    return '<li class="'+t.kind+' '+tier+(t.fresh && Date.now()-t.t<120000?' new':'')+'"><span class="stripe"></span><div>'+
+      '<div class="line1"><span class="sym">'+esc(t.sym)+'</span><span class="kind">'+esc(t.kind)+'</span><span class="muted" style="font-size:12px">'+num(t.amount)+' '+esc(t.sym)+'</span></div>'+
+      '<div class="line2"><a href="https://solscan.io/account/'+esc(t.wallet)+'" target="_blank" rel="noopener" class="addr" title="'+esc(t.wallet)+'">'+short(t.wallet)+'</a>'+
+      '<a href="https://solscan.io/tx/'+esc(t.tx)+'" target="_blank" rel="noopener">tx</a>'+
+      '<a href="https://www.geckoterminal.com/solana/pools/'+esc(t.pool)+'" target="_blank" rel="noopener">chart</a></div></div>'+
+      '<div><div class="usd">'+usd(t.usd)+'</div><div class="ago" data-t="'+t.t+'">'+ago(t.t)+'</div></div></li>';
+  }).join("");
+  // stats
+  const hour = all.filter(t => Date.now()-t.t < 3600000);
+  $("t-count").textContent = hour.length;
+  const bv = hour.filter(t=>t.kind==="buy").reduce((s,t)=>s+t.usd,0), sv = hour.filter(t=>t.kind==="sell").reduce((s,t)=>s+t.usd,0);
+  const tot = bv+sv || 1;
+  $("flow-b").style.width = (bv/tot*100)+"%"; $("flow-s").style.width = (sv/tot*100)+"%";
+  $("flow-txt").innerHTML = '<span style="color:var(--buy)">'+usd(bv)+' bought</span> · <span style="color:var(--sell)">'+usd(sv)+' sold</span>';
+  const big = all.reduce((m,t)=> !m || t.usd>m.usd ? t : m, null);
+  if (big){ $("t-big").textContent = usd(big.usd); $("t-big-s").textContent = big.kind+" "+big.sym+" · "+ago(big.t); }
+  // wallets
+  const W = new Map();
+  for (const t of all){ const w = W.get(t.wallet) || {wallet:t.wallet, vol:0, net:0, n:0, syms:new Set()}; w.vol+=t.usd; w.net += t.kind==="buy"?t.usd:-t.usd; w.n++; w.syms.add(t.sym); W.set(t.wallet,w); }
+  const top = [...W.values()].sort((a,b)=>b.vol-a.vol).slice(0,10);
+  $("wallets").innerHTML = top.length ? top.map((w,i)=>
+    '<li data-w="'+esc(w.wallet)+'" title="Show only this wallet"><span class="rank">'+(i+1)+'</span><span><span class="addr">'+short(w.wallet)+'</span> <span class="muted" style="font-size:12px">'+w.n+' swaps · '+esc([...w.syms].slice(0,2).join(", "))+(w.syms.size>2?"…":"")+'</span></span><span class="net" style="color:'+(w.net>=0?'var(--buy)':'var(--sell)')+'">'+(w.net>=0?"+":"−")+usd(Math.abs(w.net)).slice(0)+'</span></li>'
+  ).join("") : '<li class="empty" style="grid-column:1/-1;display:block;border:0">Scanning trending pools…</li>';
+}
+$("wallets").addEventListener("click", e => {
+  const li = e.target.closest("li[data-w]"); if (!li) return;
+  walletFilter = li.dataset.w; $("sol-filter").hidden = false; $("sol-filter-addr").textContent = short(walletFilter); renderSol();
+  $("sol-feed").scrollIntoView({behavior: reduce?"auto":"smooth", block:"start"});
+});
+$("sol-clear").onclick = () => { walletFilter = null; $("sol-filter").hidden = true; renderSol(); };
+
+// ---------- Stocks: Finnhub ----------
+let ws = null, lastPx = {}, blocks = [], insiders = [], wsRetry = 0, stkTab = "blocks";
+function marketState(){
+  const ny = new Date(new Date().toLocaleString("en-US",{timeZone:"America/New_York"}));
+  const d = ny.getDay(), m = ny.getHours()*60+ny.getMinutes();
+  if (d===0||d===6) return "Market closed (weekend)";
+  if (m>=570 && m<960) return "Market open";
+  if (m>=240 && m<570) return "Pre-market";
+  if (m>=960 && m<1200) return "After hours";
+  return "Market closed";
+}
+function showStkPanes(){
+  const has = !!S.key;
+  $("stk-setup").hidden = has;
+  $("stk-feed").hidden = !has || stkTab!=="blocks";
+  $("ins-feed").hidden = !has || stkTab!=="insider";
+  $("tab-blocks").setAttribute("aria-selected", stkTab==="blocks");
+  $("tab-insider").setAttribute("aria-selected", stkTab==="insider");
+}
+$("tab-blocks").onclick = () => { stkTab="blocks"; showStkPanes(); };
+$("tab-insider").onclick = () => { stkTab="insider"; showStkPanes(); };
+function connectStocks(){
+  if (ws){ try{ ws.onclose=null; ws.close(); }catch{} ws=null; }
+  showStkPanes();
+  if (!S.key){ setStatus("st-stk","","Stocks: add a Finnhub key"); return; }
+  setStatus("st-stk","warn","Stocks: connecting");
+  ws = new WebSocket("wss://ws.finnhub.io?token="+encodeURIComponent(S.key));
+  ws.onopen = () => { wsRetry = 0; for (const s of S.watch.slice(0,50)) ws.send(JSON.stringify({type:"subscribe", symbol:s})); setStatus("st-stk","live","Stocks: streaming "+S.watch.length+" tickers"); renderBlocks(); };
+  ws.onmessage = ev => {
+    let m; try{ m = JSON.parse(ev.data); }catch{ return; }
+    if (m.type === "error"){ setStatus("st-stk","err","Stocks: "+(m.msg||"error")); return; }
+    if (m.type !== "trade" || !m.data) return;
+    let hit = false;
+    for (const tr of m.data){
+      const prev = lastPx[tr.s]; lastPx[tr.s] = tr.p;
+      const notional = tr.p * tr.v;
+      if (notional < S.stkTh) continue;
+      const dir = prev==null || tr.p===prev ? "flat" : tr.p>prev ? "up" : "down";
+      blocks.unshift({s:tr.s, p:tr.p, v:tr.v, n:notional, t:tr.t, dir, c:(tr.c||[]).join(",")});
+      addPing(tr.s, tr.t, notional, "stock"); hit = true;
+    }
+    if (hit){ blocks = blocks.slice(0,300); renderBlocks(); }
+  };
+  ws.onclose = () => {
+    setStatus("st-stk","err","Stocks: disconnected, retrying");
+    const d = Math.min(60000, 2000 * 2 ** wsRetry++);
+    setTimeout(connectStocks, d);
+  };
+  loadInsiders();
+}
+function renderBlocks(){
+  const today = new Date().toDateString();
+  $("t-blocks").textContent = blocks.filter(b => new Date(b.t).toDateString()===today).length;
+  const f = $("stk-feed");
+  if (!blocks.length){
+    const ms = marketState();
+    f.innerHTML = '<li class="empty" style="display:block;padding:18px 16px">'+(ms==="Market open" ? "Listening for prints over "+usd(S.stkTh)+"…" : esc(ms)+". Block prints show up when trading resumes (pre-market 4:00 ET, open 9:30 ET). Check the Insider tab in the meantime.")+'</li>';
+    return;
+  }
+  f.innerHTML = blocks.slice(0,150).map(b =>
+    '<li class="'+b.dir+(Date.now()-b.t<5000?' new':'')+(b.n>=S.stkTh*10?' tier-3':'')+'"><span class="stripe"></span><div>'+
+    '<div class="line1"><span class="sym">'+esc(b.s)+'</span><span class="kind">'+(b.dir==="up"?"uptick":b.dir==="down"?"downtick":"block")+'</span><span class="muted" style="font-size:12px">'+num(b.v)+' sh @ $'+b.p.toFixed(2)+'</span></div>'+
+    '<div class="line2"><a href="https://finance.yahoo.com/quote/'+esc(b.s)+'" target="_blank" rel="noopener">quote</a>'+(b.c?'<span title="Trade condition codes">cond '+esc(b.c)+'</span>':'')+'</div></div>'+
+    '<div><div class="usd">'+usd(b.n)+'</div><div class="ago" data-t="'+b.t+'">'+ago(b.t)+'</div></div></li>'
+  ).join("");
+}
+async function loadInsiders(){
+  if (!S.key) return;
+  const from = new Date(Date.now()-30*86400000).toISOString().slice(0,10);
+  const out = [];
+  $("ins-feed").innerHTML = '<li class="empty" style="display:block;padding:18px 16px">Loading Form 4 filings for your watchlist…</li>';
+  for (const s of S.watch.slice(0,30)){
+    try{
+      const r = await fetch("https://finnhub.io/api/v1/stock/insider-transactions?symbol="+encodeURIComponent(s)+"&from="+from+"&token="+encodeURIComponent(S.key));
+      if (!r.ok) continue;
+      const j = await r.json();
+      for (const x of (j.data||[])){
+        if (x.transactionCode!=="P" && x.transactionCode!=="S") continue;
+        const n = Math.abs(x.change) * (x.transactionPrice||0);
+        if (n < 250000) continue;
+        out.push({s, name:x.name, code:x.transactionCode, sh:Math.abs(x.change), px:x.transactionPrice, n, date:x.transactionDate, filed:x.filingDate, remain:x.share});
+      }
+    }catch{}
+    await new Promise(z=>setTimeout(z,1100));
+  }
+  insiders = out.sort((a,b)=> (b.filed||"").localeCompare(a.filed||"") || b.n-a.n);
+  const f = $("ins-feed");
+  f.innerHTML = insiders.length ? insiders.slice(0,150).map(x =>
+    '<li class="'+(x.code==="P"?"buy":"sell")+(x.n>=10e6?' tier-3':'')+'"><span class="stripe"></span><div>'+
+    '<div class="line1"><span class="sym">'+esc(x.s)+'</span><span class="kind">'+(x.code==="P"?"insider buy":"insider sell")+'</span><span class="muted" style="font-size:12px">'+num(x.sh)+' sh @ $'+(+x.px).toFixed(2)+'</span></div>'+
+    '<div class="line2"><span>'+esc(x.name)+'</span><span>traded '+esc(x.date)+'</span><span>filed '+esc(x.filed)+'</span></div></div>'+
+    '<div><div class="usd">'+usd(x.n)+'</div><div class="ago">'+num(x.remain||0)+' left</div></div></li>'
+  ).join("") : '<li class="empty" style="display:block;padding:18px 16px">No open-market insider trades over $250K in the last 30 days for this watchlist.</li>';
+}
+
+// ---------- settings ----------
+function fillSettings(){ $("sol-th").value = S.solTh; $("stk-th").value = S.stkTh; $("watch").value = S.watch.join(", "); $("key").value = S.key; $("sol-meta").textContent = "≥ "+usd(S.solTh); $("stk-meta").textContent = "≥ "+usd(S.stkTh)+" prints"; $("t-count-s").textContent = "swaps ≥ "+usd(S.solTh); }
+function saveKey(k){ S.key = k.trim(); store.set("key", S.key); fillSettings(); connectStocks(); }
+$("key-save-inline").onclick = () => saveKey($("key-inline").value);
+$("key-inline").addEventListener("keydown", e => { if (e.key==="Enter") saveKey($("key-inline").value); });
+$("key-clear").onclick = () => { $("key").value=""; saveKey(""); };
+$("save").onclick = () => {
+  const oldSol = S.solTh, oldWatch = S.watch.join(), oldKey = S.key;
+  S.solTh = Math.max(500, +$("sol-th").value || 5000);
+  S.stkTh = Math.max(50000, +$("stk-th").value || 1000000);
+  S.watch = $("watch").value.split(/[\s,]+/).map(s=>s.trim().toUpperCase()).filter(Boolean).slice(0,50);
+  S.key = $("key").value.trim();
+  for (const k of ["solTh","stkTh","watch","key"]) store.set(k, S[k]);
+  fillSettings();
+  if (S.solTh < oldSol || S.solTh !== oldSol){ firstPass.clear(); }
+  renderSol(); renderBlocks();
+  if (S.watch.join()!==oldWatch || S.key!==oldKey) connectStocks();
+};
+$("extra-add").onclick = async () => {
+  const m = $("extra").value.trim(); if (!m) return;
+  $("extra-msg").textContent = "Looking up…";
+  if (await addTokenPool(m, false)){ if (!S.extra.includes(m)){ S.extra.push(m); store.set("extra", S.extra); } $("extra").value=""; }
+};
+
+// ---------- tick ----------
+setInterval(() => {
+  for (const el of document.querySelectorAll(".ago[data-t]")) el.textContent = ago(+el.dataset.t);
+  $("st-mkt").textContent = marketState();
+}, 15000);
+setInterval(loadTrending, 5*60*1000);
+setInterval(loadInsiders, 30*60*1000);
+
+fillSettings();
+$("st-mkt").textContent = marketState();
+connectStocks();
+renderBlocks();
+loadTrending().then(scanNext);
+})();
+</script>
+</body>
+</html>
