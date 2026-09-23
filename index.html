@@ -592,7 +592,7 @@ const OLD_DEFAULT = "SPY,QQQ,NVDA,TSLA,AAPL,MSFT,AMZN,META,AMD,GOOGL,PLTR,COIN,M
 let watch0 = store.get("watch", null);
 if (!Array.isArray(watch0) || !watch0.length || watch0.join() === OLD_DEFAULT) watch0 = DEFAULT_WATCH;
 const S = {
-  solTh: store.get("solTh", 5000),
+  solTh: store.get("solTh", 2500),
   minVol: store.get("minVol", 100000),
   stkTh: store.get("stkTh", 1000000),
   watch: watch0.slice(0, 50),
@@ -1355,7 +1355,7 @@ $("key-clear").onclick = () => { $("key").value = ""; saveKey(""); };
 $("sig-add-key").onclick = () => { showTab("stocks"); $("key-inline").focus(); };
 $("save").onclick = () => {
   const old = {solTh:S.solTh, minVol:S.minVol, key:S.key, watch:S.watch.join()};
-  S.solTh = Math.max(500, +$("sol-th").value || 5000);
+  S.solTh = Math.max(500, +$("sol-th").value || 2500);
   S.minVol = Math.max(10000, +$("min-vol").value || 100000);
   S.stkTh = Math.max(50000, +$("stk-th").value || 1000000);
   S.watch = [...new Set($("watch").value.split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(s => /^[A-Z][A-Z.\-]{0,9}$/.test(s)))].slice(0, 50);
