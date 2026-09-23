@@ -716,11 +716,14 @@ let walletFilter = null, discovering = false, scanning = false, pulsing = false,
 // Space requests 2.3s apart, widen the gap when rate-limited and narrow it again as requests succeed.
 const GAP_MIN = 2300, GAP_MAX = 15000;
 const gq = []; let gBusy = false, gGap = GAP_MIN, gtLimited = false;
-function gt(path){ return new Promise((res, rej) => { gq.push({path, res, rej, tries:0}); gPump(); }); }
+// prio 1 = whale-swap scans, which go ahead of pool discovery (prio 0).
+function gt(path, prio = 0){ return new Promise((res, rej) => { gq.push({path, res, rej, tries:0, prio}); gPump(); }); }
 async function gPump(){
   if (gBusy || !gq.length) return;
   gBusy = true;
-  const job = gq.shift();
+  let k = 0;
+  for (let i = 1; i < gq.length; i++) if (gq[i].prio > gq[k].prio) k = i;
+  const job = gq.splice(k, 1)[0];
   // GeckoTerminal's 429 carries no CORS headers, so the browser reports it as a network error.
   let limited = false;
   try {
@@ -737,7 +740,8 @@ async function gPump(){
   if (limited){
     gGap = Math.min(GAP_MAX, Math.round(gGap * 1.6));
     if (!gtLimited){ gtLimited = true; renderSolSoon(); }
-    if (++job.tries <= 6) gq.unshift(job); else job.rej(new Error("GeckoTerminal is busy"));
+    // A scan that keeps failing is dropped quickly so the next pick can use fresher activity data.
+    if (++job.tries <= (job.prio ? 2 : 6)) gq.unshift(job); else job.rej(new Error("GeckoTerminal is busy"));
     setStatus("st-sol", "warn", "Solana: swap source is rate-limiting, slowing down");
     await sleep(gGap * 2);
   }
@@ -885,7 +889,7 @@ async function scanLoop(){
   pool.lastScan = Date.now();
   const wasScanned = scannedOnce.has(pool.addr);
   try {
-    const r = await gt("/networks/solana/pools/"+pool.addr+"/trades?trade_volume_in_usd_greater_than="+Math.round(S.solTh));
+    const r = await gt("/networks/solana/pools/"+pool.addr+"/trades?trade_volume_in_usd_greater_than="+Math.round(S.solTh), 1);
     lastScanAt = Date.now();
     ingest(pool, r.data || [], wasScanned);
   } catch(e){
