@@ -762,7 +762,7 @@ function poolFromGT(p, src){
 const qualifies = o => !!o.addr && !!o.mint && !SKIP_MINTS.has(o.mint) && o.liq >= MIN_LIQ && (o.vol24 >= S.minVol || o.vol1h >= S.minVol / 6);
 function upsertPool(o){
   const p = pools.get(o.addr);
-  if (!p){ pools.set(o.addr, {...o, lastScan:0, hits:0, lastHit:0, v5:0, b5:0, s5:0, pc5:0, pulseAt:0}); return; }
+  if (!p){ pools.set(o.addr, {...o, lastScan:0, hits:0, lastHit:0, v5:0, b5:0, s5:0, pc5:0, pulseAt:0, acc:0}); return; }
   for (const k of ["mcap","liq","vol24","vol1h","created"]) if (o[k]) p[k] = o[k];
   if (o.pinned) p.pinned = true;
 }
@@ -831,6 +831,7 @@ async function pulse(){
         const pool = pools.get(p.pairAddress); if (!pool) continue;
         const tx = (p.txns && p.txns.m5) || {};
         pool.v5 = +(p.volume?.m5) || 0; pool.b5 = +tx.buys || 0; pool.s5 = +tx.sells || 0; pool.pc5 = +(p.priceChange?.m5) || 0;
+        if (pool.pulseAt) pool.acc = (pool.acc || 0) + pool.v5 * Math.min(now - pool.pulseAt, 300e3) / 300e3;
         pool.mcap = +p.marketCap || +p.fdv || pool.mcap;
         pool.liq = +(p.liquidity?.usd) || pool.liq;
         pool.vol1h = +(p.volume?.h1) || 0;
@@ -865,6 +866,9 @@ function prunePools(){
 }
 // Scan next wherever the most unseen money should be: the pool's current dollar-per-second rate
 // (5-minute volume when fresh) times the time since we last looked, capped at an hour.
+// A pool whose volume since its last scan (summed from the 15s pulses) is under the whale threshold
+// can't hold a new whale swap, so it's skipped to save the request.
+// ponytail: pulses missed while another tab led undercount, so such a pool waits for fresh volume.
 function pickPool(){
   const now = Date.now();
   let best = null, top = -1;
@@ -873,6 +877,7 @@ function pickPool(){
     const fresh = p.pulseAt && now - p.pulseAt < 90e3;
     const rate = Math.max(fresh ? p.v5 / 300 : (p.vol1h || p.vol24 / 24) / 3600, p.vol24 / 86400 * 0.2, 0.01);
     const since = p.lastScan ? Math.min(now - p.lastScan, 36e5) : 36e5;
+    if (p.lastScan && fresh && p.acc < S.solTh && p.v5 < S.solTh) continue;
     const s = rate * since * (now - p.lastHit < 30*60e3 ? 1.5 : 1);
     if (s > top){ top = s; best = p; }
   }
@@ -883,7 +888,7 @@ async function scanLoop(){
   scanning = true;
   const pool = pickPool();
   if (!pool){ setTimeout(scanLoop, 1500); return; }
-  pool.lastScan = Date.now();
+  pool.lastScan = Date.now(); pool.acc = 0;
   const wasScanned = scannedOnce.has(pool.addr);
   try {
     const r = await gt("/networks/solana/pools/"+pool.addr+"/trades?trade_volume_in_usd_greater_than="+Math.round(S.solTh), 1);
