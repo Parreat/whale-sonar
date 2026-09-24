@@ -357,6 +357,7 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
   <summary>Settings: thresholds, watchlist, extra coins</summary>
   <div class="sgrid">
     <label for="sol-th">Solana whale size (USD per swap)<input type="number" id="sol-th" min="1" step="any"></label>
+    <label for="alert-th">Notify me of meme buys over (USD, 0 = off)<input type="number" id="alert-th" min="0" step="any"></label>
     <label for="min-vol">Only scan meme pools trading at least (USD per 24h)<input type="number" id="min-vol" min="10000" step="10000"></label>
     <label for="stk-th">Stock block size (USD per print)<input type="number" id="stk-th" min="50000" step="50000"></label>
     <label for="watch">Stock watchlist (comma separated, up to 50)<input type="text" id="watch"></label>
@@ -585,6 +586,7 @@ let watch0 = store.get("watch", null);
 if (!Array.isArray(watch0) || !watch0.length || watch0.join() === OLD_DEFAULT) watch0 = DEFAULT_WATCH;
 const S = {
   solTh: store.get("solTh", 2500),
+  alertTh: store.get("alertTh", 0),
   minVol: store.get("minVol", 100000),
   stkTh: store.get("stkTh", 1000000),
   watch: watch0.slice(0, 50),
@@ -640,7 +642,7 @@ function claimLeader(){
 }
 let isLeader = claimLeader();
 addEventListener("pagehide", () => { const l = store.get("leader", null); if (l && l.id === TAB) store.del("leader"); });
-addEventListener("storage", e => { if (e.key && /^ws:(key|cgKey|watch|solTh|minVol|stkTh|extra)$/.test(e.key) && e.newValue !== e.oldValue) location.reload(); });
+addEventListener("storage", e => { if (e.key && /^ws:(key|cgKey|watch|solTh|alertTh|minVol|stkTh|extra)$/.test(e.key) && e.newValue !== e.oldValue) location.reload(); });
 
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -876,8 +878,17 @@ function ingest(pool, list, wasScanned){
     if (!tr.t || now - tr.t > KEEP_MS) continue;
     solTrades.set(t.id, tr); added++;
     if (now - tr.t < 30*60e3) pool.lastHit = now;
+    if (buy && S.alertTh && tr.usd >= S.alertTh && now - tr.t < 10*60e3) notifyBuy(tr);
   }
   if (added){ pool.hits += added; renderSolSoon(); }
+}
+// Only the fetching tab ingests trades, so each buy alerts once; the tag stops a new leader re-alerting the same trade.
+function notifyBuy(t){
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    const n = new Notification("Whale buy: "+usd(t.usd)+" of "+t.sym, {body:"MC "+(t.mcap ? usd(t.mcap) : "—")+" · "+ago(t.t)+" · click to open on Photon", tag:t.id});
+    n.onclick = () => { window.open(photonUrl(t.pool), "_blank", "noopener"); n.close(); };
+  } catch {}
 }
 function scanProgress(){ let done = 0; for (const a of pools.keys()) if (scannedOnce.has(a)) done++; return done; }
 function updateSolStatus(){
@@ -1300,7 +1311,7 @@ function renderSignals(){
 
 // ---------- settings ----------
 function fillSettings(){
-  $("sol-th").value = S.solTh; $("min-vol").value = S.minVol; $("stk-th").value = S.stkTh;
+  $("sol-th").value = S.solTh; $("alert-th").value = S.alertTh || ""; $("min-vol").value = S.minVol; $("stk-th").value = S.stkTh;
   $("watch").value = S.watch.join(", "); $("key").value = S.key; $("cg-key").value = S.cgKey;
 }
 function saveKey(k){
@@ -1315,6 +1326,8 @@ $("sig-add-key").onclick = () => { showTab("stocks"); $("key-inline").focus(); }
 $("save").onclick = () => {
   const old = {solTh:S.solTh, minVol:S.minVol, key:S.key, watch:S.watch.join()};
   S.solTh = Math.max(1, +$("sol-th").value || 2500);
+  S.alertTh = Math.max(0, +$("alert-th").value || 0);
+  if (S.alertTh && "Notification" in window && Notification.permission === "default") Notification.requestPermission();
   S.minVol = Math.max(10000, +$("min-vol").value || 100000);
   S.stkTh = Math.max(50000, +$("stk-th").value || 1000000);
   S.watch = [...new Set($("watch").value.split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(s => /^[A-Z][A-Z.\-]{0,9}$/.test(s)))].slice(0, 50);
@@ -1322,14 +1335,14 @@ $("save").onclick = () => {
   S.key = $("key").value.trim();
   const cgNew = $("cg-key").value.trim();
   if (cgNew !== S.cgKey){ S.cgKey = cgNew; cgOff = false; cgPlan = "demo"; store.set("cgPlan", cgPlan); gGap = gapMin(); }
-  for (const k of ["solTh","minVol","stkTh","watch","key","cgKey"]) store.set(k, S[k]);
+  for (const k of ["solTh","alertTh","minVol","stkTh","watch","key","cgKey"]) store.set(k, S[k]);
   fillSettings();
   if (S.solTh < old.solTh){ for (const p of pools.values()) p.lastScan = 0; scannedOnce.clear(); }
   if (S.minVol !== old.minVol){ for (const p of [...pools.values()]) if (!p.pinned && !qualifies(p)) pools.delete(p.addr); discoverGT(); discoverDexScreener(); }
   if (S.key !== old.key) resetFinnhub();
   if (S.watch.join() !== old.watch || S.key !== old.key){ loadStockCache(); connectStocks(); refreshStocks(); }
   renderSol(); renderStocks(); renderSignals(); updateSolStatus();
-  $("save-msg").textContent = "Saved.";
+  $("save-msg").textContent = S.alertTh && "Notification" in window && Notification.permission === "denied" ? "Saved, but this browser is blocking notifications for this site." : "Saved.";
 };
 $("sol-th-edit").onclick = e => { e.preventDefault(); $("settings").open = true; $("sol-th").focus(); $("sol-th").select(); };
 $("sol-th").addEventListener("keydown", e => { if (e.key === "Enter") $("save").click(); });
