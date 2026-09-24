@@ -361,6 +361,7 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
     <label for="stk-th">Stock block size (USD per print)<input type="number" id="stk-th" min="50000" step="50000"></label>
     <label for="watch">Stock watchlist (comma separated, up to 50)<input type="text" id="watch"></label>
     <label for="key">Finnhub API key<span class="row"><input type="password" id="key" autocomplete="off"><button class="btn" id="key-clear" type="button">Clear</button></span></label>
+    <label for="cg-key">CoinGecko API key (optional: faster meme scans; free Demo key works)<input type="password" id="cg-key" autocomplete="off" placeholder="CG-…"></label>
     <label for="extra">Always scan this Solana token (mint address)<span class="row"><input type="text" id="extra" placeholder="e.g. DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"><button class="btn" id="extra-add" type="button">Add</button></span><span id="extra-msg"></span></label>
   </div>
   <div class="row" style="padding:0 16px 18px"><button class="btn primary" id="save" type="button">Apply settings</button><span class="muted sm" id="save-msg"></span></div>
@@ -588,6 +589,7 @@ const S = {
   stkTh: store.get("stkTh", 1000000),
   watch: watch0.slice(0, 50),
   key: store.get("key", ""),
+  cgKey: store.get("cgKey", ""),
   extra: store.get("extra", []),
   band: store.get("band", "all")
 };
@@ -638,7 +640,7 @@ function claimLeader(){
 }
 let isLeader = claimLeader();
 addEventListener("pagehide", () => { const l = store.get("leader", null); if (l && l.id === TAB) store.del("leader"); });
-addEventListener("storage", e => { if (e.key && /^ws:(key|watch|solTh|minVol|stkTh|extra)$/.test(e.key) && e.newValue !== e.oldValue) location.reload(); });
+addEventListener("storage", e => { if (e.key && /^ws:(key|cgKey|watch|solTh|minVol|stkTh|extra)$/.test(e.key) && e.newValue !== e.oldValue) location.reload(); });
 
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -663,7 +665,16 @@ let walletFilter = null, discovering = false, scanning = false, pulsing = false,
 // GeckoTerminal's keyless API allows about 10 requests a minute per network, shared with anything else on it.
 // Space requests 6.5s apart, widen the gap when rate-limited and narrow it again as requests succeed.
 const GAP_MIN = 6500, GAP_MAX = 30000;
-const gq = []; let gBusy = false, gGap = GAP_MIN, gtLimited = false;
+// With the user's own CoinGecko key (same GeckoTerminal data, a limit of its own) scan every 2s, about 30 a minute.
+// ponytail: fixed 2s for every plan; the free Demo key's 10K calls a month last ~5-6 hours at this pace.
+const CG = {demo:"https://api.coingecko.com/api/v3/onchain", pro:"https://pro-api.coingecko.com/api/v3/onchain"};
+let cgPlan = store.get("cgPlan", "demo"), cgOff = false;
+const keyed = () => !!S.cgKey && !cgOff;
+const gapMin = () => keyed() ? 2000 : GAP_MIN;
+const gtFetch = path => keyed()
+  ? fetch(CG[cgPlan] + path, {headers:{accept:"application/json", ["x-cg-"+cgPlan+"-api-key"]:S.cgKey}})
+  : fetch(GT + path, {headers:{accept:"application/json"}});
+const gq = []; let gBusy = false, gGap = gapMin(), gtLimited = false;
 // prio 1 = whale-swap scans, which go ahead of pool discovery (prio 0).
 function gt(path, prio = 0){ return new Promise((res, rej) => { gq.push({path, res, rej, tries:0, prio}); gPump(); }); }
 async function gPump(){
@@ -676,11 +687,17 @@ async function gPump(){
   // GeckoTerminal's 429 carries no CORS headers, so the browser reports it as a network error.
   let limited = false;
   try {
-    const r = await fetch(GT + job.path, {headers:{accept:"application/json"}});
-    if (r.status === 429) limited = true;
+    const wasKeyed = keyed(), r = await gtFetch(job.path);
+    if (wasKeyed && (r.status === 401 || r.status === 403 || r.status === 429)){
+      const msg = ((await r.json().catch(() => ({}))).status || {}).error_message || "";
+      if (r.status !== 429 && !job.swapped){ job.swapped = true; cgPlan = cgPlan === "demo" ? "pro" : "demo"; store.set("cgPlan", cgPlan); gq.unshift(job); } // Demo and paid keys use different URLs: try the other one
+      else if (r.status !== 429 || /month|credit|plan|upgrade/i.test(msg)){ cgOff = true; gGap = GAP_MIN; gq.unshift(job); $("save-msg").textContent = "CoinGecko key isn't working ("+(msg || "HTTP "+r.status)+"), so meme scans use the free limit."; }
+      else limited = true;
+    }
+    else if (r.status === 429) limited = true;
     else if (!r.ok) job.rej(new Error("HTTP "+r.status));
     else {
-      gGap = Math.max(GAP_MIN, Math.round(gGap * 0.9));
+      gGap = Math.max(gapMin(), Math.round(gGap * 0.9));
       const j = await r.json();
       if (gtLimited){ gtLimited = false; updateSolStatus(); renderSolSoon(); }
       job.res(j);
@@ -1284,7 +1301,7 @@ function renderSignals(){
 // ---------- settings ----------
 function fillSettings(){
   $("sol-th").value = S.solTh; $("min-vol").value = S.minVol; $("stk-th").value = S.stkTh;
-  $("watch").value = S.watch.join(", "); $("key").value = S.key;
+  $("watch").value = S.watch.join(", "); $("key").value = S.key; $("cg-key").value = S.cgKey;
 }
 function saveKey(k){
   S.key = k.trim(); store.set("key", S.key);
@@ -1303,7 +1320,9 @@ $("save").onclick = () => {
   S.watch = [...new Set($("watch").value.split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(s => /^[A-Z][A-Z.\-]{0,9}$/.test(s)))].slice(0, 50);
   if (!S.watch.length) S.watch = DEFAULT_WATCH.slice();
   S.key = $("key").value.trim();
-  for (const k of ["solTh","minVol","stkTh","watch","key"]) store.set(k, S[k]);
+  const cgNew = $("cg-key").value.trim();
+  if (cgNew !== S.cgKey){ S.cgKey = cgNew; cgOff = false; cgPlan = "demo"; store.set("cgPlan", cgPlan); gGap = gapMin(); }
+  for (const k of ["solTh","minVol","stkTh","watch","key","cgKey"]) store.set(k, S[k]);
   fillSettings();
   if (S.solTh < old.solTh){ for (const p of pools.values()) p.lastScan = 0; scannedOnce.clear(); }
   if (S.minVol !== old.minVol){ for (const p of [...pools.values()]) if (!p.pinned && !qualifies(p)) pools.delete(p.addr); discoverGT(); discoverDexScreener(); }
