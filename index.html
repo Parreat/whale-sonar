@@ -277,7 +277,7 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
         <button class="chipbtn" type="button" data-band="mid">$10M–$100M</button>
         <button class="chipbtn" type="button" data-band="large">$100M+</button>
       </div>
-      <div class="filterbar" id="sol-filter" hidden>Showing wallet <span class="addr" id="sol-filter-addr"></span><a id="sol-filter-track" href="https://birdeye.so" target="_blank" rel="noopener">Track this wallet ↗</a><button class="btn" id="sol-clear" type="button">Show all</button></div>
+      <div class="filterbar" id="sol-filter" hidden>Showing wallet <span class="addr" id="sol-filter-addr"></span><a id="sol-filter-track" href="https://birdeye.so" target="_blank" rel="noopener">Track this wallet ↗</a><button class="btn" id="sol-clear" type="button">✕ Exit wallet view</button></div>
       <div id="hot-wrap" hidden>
         <h3 class="subhead">Most volume right now · last 5 minutes</h3>
         <ul class="feed hot" id="hot-feed"></ul>
@@ -478,7 +478,7 @@ function tradeView(q){
   const w = document.createElement("div");
   w.className = "wrap";
   w.innerHTML =
-    '<header class="detail-head"><a class="brand" href="'+home+'">'+BRAND_SVG+'Whale Sonar <small>trade details</small></a><div class="status"><a class="btn" href="'+home+'">Back to the live feed</a></div></header>'+
+    '<header class="detail-head"><a class="brand" href="'+home+'">'+BRAND_SVG+'Whale Sonar <small>trade details</small></a><div class="status"><button class="btn" id="d-exit" type="button">✕ Close</button></div></header>'+
     '<main class="detail">'+
       '<section class="dhead '+T.kind+'"><img id="d-img" alt="" hidden>'+
         '<div><div class="eyebrow '+T.kind+'"><span class="kind">whale '+T.kind+'</span><span>'+(when ? esc(when.toLocaleString()) : "")+'</span><span id="d-ago">'+(T.t ? ago(T.t) : "")+'</span></div>'+
@@ -501,6 +501,10 @@ function tradeView(q){
       '<section><h3>This wallet in your feed</h3><div class="panel"><ul class="feed" id="d-wallet"></ul></div></section>'+
     '</main>';
   document.body.appendChild(w);
+  // Trade pages open in their own tab, so closing it returns to the feed; if the browser won't close it, go to the feed.
+  const exit = () => { window.close(); setTimeout(() => { location.href = location.pathname; }, 150); };
+  $("d-exit").onclick = exit;
+  addEventListener("keydown", e => { if (e.key === "Escape") exit(); });
 
   w.addEventListener("click", e => {
     const b = e.target.closest("button[data-copy]");
@@ -1002,6 +1006,7 @@ $("wallets").addEventListener("click", e => {
   $("sol-feed").scrollIntoView({behavior:reduce ? "auto" : "smooth", block:"nearest"});
 });
 $("sol-clear").onclick = () => { walletFilter = null; $("sol-filter").hidden = true; renderSol(); };
+addEventListener("keydown", e => { if (e.key === "Escape" && walletFilter) $("sol-clear").click(); });
 function syncChips(){ for (const b of $("mc-chips").querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.band === S.band)); }
 $("mc-chips").addEventListener("click", e => {
   const b = e.target.closest("button[data-band]"); if (!b) return;
