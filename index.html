@@ -133,6 +133,7 @@ h3{font:600 12px var(--body);text-transform:uppercase;letter-spacing:.08em;color
 .buy .stripe,.up .stripe{background:var(--buy)}
 .sell .stripe,.down .stripe{background:var(--sell)}
 .flat .stripe{background:var(--stock)}
+.hot .stripe{background:var(--sonar)}
 .line1{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .sym{font:600 14px var(--body)}
 .kind{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:3px}
@@ -257,6 +258,7 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
   <button class="mtab" role="tab" type="button" id="mt-memes" data-tab="memes" aria-controls="p-memes" aria-selected="true">Meme coins <span class="badge" id="b-memes"></span></button>
   <button class="mtab" role="tab" type="button" id="mt-stocks" data-tab="stocks" aria-controls="p-stocks" aria-selected="false">Stock whales <span class="badge" id="b-stocks"></span></button>
   <button class="mtab" role="tab" type="button" id="mt-signals" data-tab="signals" aria-controls="p-signals" aria-selected="false">Stock signals <span class="badge" id="b-signals"></span></button>
+  <button class="mtab" role="tab" type="button" id="mt-news" data-tab="news" aria-controls="p-news" aria-selected="false">News</button>
 </nav>
 
 <section class="tabpanel" id="p-memes" role="tabpanel" aria-labelledby="mt-memes">
@@ -330,6 +332,24 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
       <div class="row"><input type="password" id="key-inline" placeholder="Finnhub API key" autocomplete="off"><button class="btn primary" id="key-save-inline" type="button">Connect</button></div>
     </div>
     <ul class="feed" id="stk-feed" hidden></ul>
+  </div>
+</section>
+
+<section class="tabpanel" id="p-news" role="tabpanel" aria-labelledby="mt-news" hidden>
+  <div class="panel">
+    <div class="panel-head">
+      <div class="subtabs" id="news-views" role="tablist" aria-label="News views">
+        <button class="subtab" type="button" role="tab" data-view="stocks">Stock news</button>
+        <button class="subtab" type="button" role="tab" data-view="memes">Meme coin news</button>
+      </div>
+      <span class="meta" id="news-meta"></span>
+    </div>
+    <div class="setup" id="news-setup" hidden>
+      <strong>News uses the same free Finnhub key as the stock feed</strong>
+      <div><button class="btn primary" id="news-add-key" type="button">Add Finnhub key</button></div>
+    </div>
+    <ul class="feed" id="news-feed"></ul>
+    <p class="fine">Headlines from Finnhub's market and crypto news plus news on your watchlist stocks, checked every 5 minutes. Stories rank higher for market-moving words (the Fed, inflation, earnings, the SEC, hacks, listings, ETFs…) and for naming your watchlist stocks or the meme coins being tracked, and fade over a few hours. Not financial advice.</p>
   </div>
 </section>
 
@@ -599,7 +619,7 @@ const S = {
   extra: store.get("extra", []),
   band: store.get("band", "all")
 };
-let solView = store.get("solView", "buys"), stkView = store.get("stkView", "movers");
+let solView = store.get("solView", "buys"), stkView = store.get("stkView", "movers"), newsView = store.get("newsView", "stocks");
 if (!["buys","big","all"].includes(solView)) solView = "buys";
 if (!["movers","latest","biggest","insider"].includes(stkView)) stkView = "movers";
 const SD = {}; // per-ticker Finnhub data
@@ -611,7 +631,7 @@ const renderStocksSoon = debounce(renderStocks, 500);
 const renderSignalsSoon = debounce(renderSignals, 600);
 
 // ---------- tabs ----------
-const TABS = ["memes","stocks","signals"];
+const TABS = ["memes","stocks","signals","news"];
 let tab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : store.get("tab", "memes");
 if (!TABS.includes(tab)) tab = "memes";
 function showTab(t){
@@ -622,6 +642,7 @@ function showTab(t){
   if (t === "memes") renderSol();
   if (t === "stocks") renderStocks();
   if (t === "signals") renderSignals();
+  if (t === "news") renderNews();
 }
 $("maintabs").addEventListener("click", e => { const b = e.target.closest(".mtab"); if (b) showTab(b.dataset.tab); });
 $("maintabs").addEventListener("keydown", e => {
@@ -1314,6 +1335,78 @@ function renderSignals(){
   ).join("");
 }
 
+// ---------- News: Finnhub market + crypto news and watchlist headlines, ranked by likely market impact ----------
+const IMPACT = [
+  [/\b(fed|fomc|powell|rate (?:cut|hike)s?|interest rates?|cpi|inflation|jobs report|payrolls|recession|tariffs?)\b/i, 3],
+  [/\b(sec|lawsuits?|probe|investigation|bankrupt\w*|default|halt\w*|fraud|hack\w*|exploit\w*|rug ?pull\w*|delist\w*)\b/i, 3],
+  [/\b(earnings|guidance|revenue|downgrades?|upgrades?|price target|merger|acquisitions?|acquires?|buyout|ipo|etf|listing|approv\w+)\b/i, 2],
+  [/\b(surg\w+|soar\w*|plung\w+|crash\w*|tumbl\w+|skyrocket\w*|record high|all-time high|whales?)\b/i, 1]
+];
+const MEME = /\b(meme ?coins?|memes?|solana|sol|pump\.?fun|bonk|wif|dogwifhat|popcat|pepe|doge|dogecoin|shib\w*|trump coin|raydium|jupiter)\b/i;
+const reEsc = x => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function refreshNews(){
+  if (!S.key || keyBad || !isLeader) return;
+  for (const cat of ["general","crypto"]){
+    const c = store.get("news:"+cat, null);
+    if (c && Date.now() - c.at < 5*60e3) continue;
+    store.set("news:"+cat, {at:Date.now(), v:(c && c.v) || []}); // claim the slot so a failure waits 5 minutes too
+    fh("/news?category="+cat).then(r => {
+      store.set("news:"+cat, {at:Date.now(), v:(Array.isArray(r) ? r : []).slice(0, 100).map(x => ({h:x.headline, u:x.url, src:x.source, t:x.datetime * 1000, rel:x.related || "", sum:(x.summary || "").slice(0, 240)}))});
+      renderNews();
+    }).catch(() => {});
+  }
+}
+// Score = (1 + impact words + named stocks/coins) halved every 6 hours.
+function scoreNews(x, names){
+  const text = x.h + " " + x.sum, tags = [];
+  let w = 0;
+  for (const [re, k] of IMPACT){ const m = text.match(re); if (m){ w += k; tags.push(m[0]); } }
+  for (const [label, re, k] of names) if (re.test(x.h) || re.test(x.rel)){ w += k; tags.push(label); }
+  return {...x, tags:[...new Set(tags)].slice(0, 4), score:(1 + w) * 0.5 ** (Math.max(0, Date.now() - x.t) / 216e5), hot:w >= 4};
+}
+function newsItems(view){
+  const names = [];
+  let pool;
+  if (view === "stocks"){
+    pool = [...((store.get("news:general", null) || {}).v || [])];
+    for (const s of S.watch){
+      for (const n of (SD[s] && SD[s].news) || []) pool.push({h:n.h, u:n.u, src:n.src, t:n.t * 1000, rel:s, sum:""});
+      if (s.length > 1) names.push([s, new RegExp("\\b" + reEsc(s) + "\\b"), 3]); // one-letter tickers (F, V) match too much; their names still count
+      const nm = NAMES[s]; if (nm && nm.length > 3 && nm !== "Strategy") names.push([s, new RegExp("\\b" + reEsc(nm) + "\\b", "i"), 3]);
+    }
+  } else {
+    pool = [...((store.get("news:crypto", null) || {}).v || [])];
+    names.push(["meme", MEME, 4]);
+    for (const p of hotPools()) if (p.sym && p.sym.length >= 3) names.push([p.sym, new RegExp("(^|[^A-Za-z0-9])\\$?" + reEsc(p.sym) + "\\b"), 3]);
+  }
+  const seen = new Set(), out = [];
+  for (const x of pool){
+    const k = (x.h || "").toLowerCase().trim();
+    if (!k || !/^https?:\/\//.test(x.u || "") || seen.has(k) || Date.now() - x.t > 3*864e5) continue;
+    seen.add(k); out.push(scoreNews(x, names));
+  }
+  return out.sort((a, b) => b.score - a.score).slice(0, 80);
+}
+function renderNews(){
+  const has = !!S.key;
+  for (const b of $("news-views").querySelectorAll("button")) b.setAttribute("aria-selected", String(b.dataset.view === newsView));
+  $("news-setup").hidden = has; $("news-feed").hidden = !has;
+  if (!has){ $("news-meta").textContent = "needs a Finnhub key"; return; }
+  const list = newsItems(newsView), c = store.get(newsView === "stocks" ? "news:general" : "news:crypto", null);
+  $("news-meta").textContent = "most important first" + (c && c.v.length ? " · checked " + ago(c.at) : "");
+  $("news-feed").innerHTML = list.length ? list.map(x =>
+    '<li class="'+(x.hot ? "hot" : "")+'"><a class="rowlink" href="'+esc(x.u)+'" target="_blank" rel="noopener nofollow"><span class="stripe"></span><div>'+
+    '<div class="line1"><span class="sym">'+esc(x.h)+'</span></div>'+
+    '<div class="line2"><span>'+esc(x.src || "")+'</span>'+x.tags.map(g => '<span class="tag">'+esc(g)+'</span>').join("")+'</div></div>'+
+    '<div><div class="ago" data-t="'+x.t+'">'+ago(x.t)+'</div></div></a></li>'
+  ).join("") : '<li class="empty">Loading headlines…</li>';
+}
+$("news-views").addEventListener("click", e => {
+  const b = e.target.closest("button[data-view]"); if (!b) return;
+  newsView = b.dataset.view; store.set("newsView", newsView); renderNews();
+});
+$("news-add-key").onclick = () => { showTab("stocks"); $("key-inline").focus(); };
+
 // ---------- settings ----------
 function fillSettings(){
   $("sol-th").value = S.solTh; $("alert-th").value = S.alertTh || ""; $("min-vol").value = S.minVol; $("stk-th").value = S.stkTh;
@@ -1364,14 +1457,14 @@ function followerSync(){
   if (st){ $("t-pools").textContent = st.pools; $("t-pools-s").textContent = "scanned by your other tab"; }
   setStatus("st-sol", "live", "Solana: mirroring your other Whale Sonar tab");
   setStatus("st-stk", S.key ? "live" : "", S.key ? "Stocks: mirroring your other tab" : "Stocks: add a Finnhub key");
-  renderSol(); renderStocks(); renderSignals();
+  renderSol(); renderStocks(); renderSignals(); if (tab === "news") renderNews();
 }
 function startLeader(){
   loadBlocks(); connectStocks();
   discoverDexScreener().then(pulse);
   if (!pools.size) discoverGT();
   if (!scanning) scanLoop();
-  refreshStocks(); updateSolStatus();
+  refreshStocks(); refreshNews(); updateSolStatus();
 }
 function stopLeader(){ if (ws){ ws.onclose = null; try{ ws.close(); }catch{} ws = null; } clearTimeout(wsTimer); }
 function heartbeat(){
@@ -1393,7 +1486,7 @@ if (isLeader) startLeader(); else followerSync();
 setInterval(() => { if (isLeader) discoverGT(); }, 5*60e3);
 setInterval(() => { if (isLeader) discoverDexScreener().then(pulse); }, 2*60e3);
 setInterval(() => { if (isLeader) pulse(); }, 15e3);
-setInterval(() => { if (isLeader) refreshStocks(); }, 20e3);
+setInterval(() => { if (isLeader){ refreshStocks(); refreshNews(); } }, 20e3);
 setInterval(renderSignals, 30e3);
 setInterval(() => {
   for (const el of document.querySelectorAll(".ago[data-t]")) el.textContent = ago(+el.dataset.t);
