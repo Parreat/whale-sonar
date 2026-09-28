@@ -467,7 +467,7 @@ function solRowHTML(t){
   return '<li class="'+side+(t.big ? ' tier-3' : '')+(t.flash ? ' new' : '')+'">'+
     '<a class="rowlink" href="'+esc(tradeHref(t))+'" target="_blank" rel="noopener" title="Open this trade in a new tab">'+
     '<span class="stripe"></span><div>'+
-    '<div class="line1"><span class="sym">'+esc(t.sym)+'</span><span class="kind">'+side+'</span><span class="muted sm">'+num(t.amount)+' '+esc(t.sym)+'</span>'+(newPool ? '<span class="tag">new pool</span>' : '')+'</div>'+
+    '<div class="line1"><span class="sym">'+esc(t.sym)+'</span><span class="kind">'+side+'</span><span class="muted sm">'+num(t.amount)+' '+esc(t.sym)+'</span>'+(newPool ? '<span class="tag">new pool</span>' : '')+(t.rep > 1 ? '<span class="tag" title="Whale buys of this coin from this wallet in the last 6 hours">'+t.rep+(t.rep >= 10 ? '× · likely a bot' : '× buyer')+'</span>' : '')+'</div>'+
     '<div class="line2"><span class="addr">'+esc(short(t.wallet))+'</span><span>MC '+(t.mcap ? usd(t.mcap) : '—')+'</span>'+
     (impact != null && impact >= 0.1 ? '<span>'+(impact >= 10 ? impact.toFixed(0) : impact.toFixed(1))+'% of pool</span>' : '')+'</div></div>'+
     '<div><div class="usd">'+usd(t.usd)+'</div><div class="ago" data-t="'+t.t+'">'+ago(t.t)+'</div></div></a></li>';
@@ -985,11 +985,15 @@ function renderSol(){
   let list = all.filter(t => now - t.t < V.win && V.keep(t) && inBand(t.mcap));
   if (walletFilter) list = list.filter(t => t.wallet === walletFilter);
   list.sort(V.sort);
+  // A wallet buying the same coin again is a stronger signal than one buy.
+  // ponytail: 10+ buys in 6 hours is labelled a likely bot; a real bot detector would look at timing and sells too.
+  const reps = new Map();
+  for (const t of all) if (t.kind === "buy" && t.wallet && now - t.t < 6*36e5){ const k = t.wallet+"|"+t.mint; reps.set(k, (reps.get(k) || 0) + 1); }
   for (const b of $("sol-views").querySelectorAll("button")) b.setAttribute("aria-selected", String(b.dataset.view === solView));
   $("hot-wrap").hidden = solView !== "big";
   if (solView === "big") renderHot();
   $("sol-feed").innerHTML = list.length
-    ? list.slice(0, V.max).map(t => { const html = solRowHTML({...t, big:t.usd >= S.solTh*10, flash:t.fresh && !t.shown && now - t.seen < 15000}); t.shown = true; return html; }).join("")
+    ? list.slice(0, V.max).map(t => { const html = solRowHTML({...t, big:t.usd >= S.solTh*10, flash:t.fresh && !t.shown && now - t.seen < 15000, rep:t.kind === "buy" ? reps.get(t.wallet+"|"+t.mint) : 0}); t.shown = true; return html; }).join("")
     : '<li class="empty">'+esc(solEmpty())+'</li>';
   updateSolMeta();
   const hour = all.filter(t => now - t.t < 36e5), six = all.filter(t => now - t.t < 6*36e5);
