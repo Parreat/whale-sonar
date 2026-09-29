@@ -1425,62 +1425,90 @@ const bqMeta = new Map(); // mint -> {photon, pool, mcap, liq, created, at} from
 // ponytail: hand-kept lists (Photon publishes none); add a venue here when Photon adds one.
 const PHOTON_DEX = /^(raydium|pumpfun|pumpswap|meteora|orca|launchlab|moonshot)/;
 const PHOTON_PROTO = /pump|raydium|meteora|orca|whirlpool|moonshot|launch/i;
-let bqOff = false, bqFails = 0, bqSince = 0, bqBusy = false;
+let bqOff = false, bqFails = 0, bqSince = 0, bqBusy = false, bqWs = null, bqLive = false, bqRetry = 0, bqNextTry = 0;
 const bqOn = () => !!S.bqKey && !bqOff;
+// Swaps over the whale size on either side, not counting SOL/USDC/USDT legs. The stream uses the same filter, live.
+function bqQuery(live){
+  const th = JSON.stringify(String(S.solTh)), base = JSON.stringify(BASE_MINTS);
+  const side = k => "{Trade: {"+k+": {AmountInUSD: {gt: "+th+"}, Currency: {MintAddress: {notIn: "+base+"}}}}}";
+  const where = "Transaction: {Result: {Success: true}}, any: ["+side("Buy")+", "+side("Sell")+"]";
+  const fields = "{Block {Time} Transaction {Signature Signer} Trade {Market {MarketAddress} Dex {ProtocolName} Buy {Amount AmountInUSD PriceInUSD Currency {Symbol MintAddress}} Sell {Amount AmountInUSD PriceInUSD Currency {Symbol MintAddress}}}}";
+  if (live) return "subscription {Solana {DEXTrades(where: {"+where+"}) "+fields+"}}";
+  // Look back to the newest swap already seen (30s overlap, ids dedupe), at most 10 minutes.
+  const since = new Date(Math.max(bqSince, Date.now() - 10*60e3) - 30e3).toISOString().slice(0, 19) + "Z";
+  return '{Solana {DEXTrades(limit: {count: 200}, orderBy: {descending: Block_Time}, where: {Block: {Time: {since: "'+since+'"}}, '+where+'}) '+fields+'}}';
+}
 async function bqPoll(){
-  if (!bqOn() || !isLeader || bqBusy) return;
+  if (!bqOn() || !isLeader || bqBusy || bqLive) return; // the stream already delivers each swap
   bqBusy = true;
   try {
-    // Look back to the newest swap already seen (30s overlap, ids dedupe), at most 10 minutes.
-    const since = new Date(Math.max(bqSince, Date.now() - 10*60e3) - 30e3).toISOString().slice(0, 19) + "Z";
-    const th = JSON.stringify(String(S.solTh)), base = JSON.stringify(BASE_MINTS);
-    const side = k => "{Trade: {"+k+": {AmountInUSD: {gt: "+th+"}, Currency: {MintAddress: {notIn: "+base+"}}}}}";
-    const query = '{Solana {DEXTrades(limit: {count: 200}, orderBy: {descending: Block_Time}, where: {Block: {Time: {since: "'+since+'"}}, Transaction: {Result: {Success: true}}, any: ['+side("Buy")+", "+side("Sell")+']}) {Block {Time} Transaction {Signature Signer} Trade {Market {MarketAddress} Dex {ProtocolName} Buy {Amount AmountInUSD PriceInUSD Currency {Symbol MintAddress}} Sell {Amount AmountInUSD PriceInUSD Currency {Symbol MintAddress}}}}}}';
-    const r = await fetch(BQ, {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer "+S.bqKey}, body:JSON.stringify({query})});
+    const r = await fetch(BQ, {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer "+S.bqKey}, body:JSON.stringify({query:bqQuery(false)})});
     const j = await r.json().catch(() => ({}));
     const rows = j.data && j.data.Solana && j.data.Solana.DEXTrades;
     if (!r.ok || !rows) throw new Error((j.errors && j.errors[0] && j.errors[0].message) || "HTTP "+r.status);
     bqFails = 0;
-    const first = !bqSince, now = Date.now(), need = new Set(), cands = [];
-    for (const x of rows){
-      const b = x.Trade.Buy, sl = x.Trade.Sell, buy = !BASE_MINTS.includes(b.Currency.MintAddress), m = buy ? b : sl;
-      const mint = m.Currency.MintAddress, sym = m.Currency.Symbol || "?", t = Date.parse(x.Block.Time);
-      // ponytail: tokenized stocks (SPYx, TSLAx…) dropped by their "x" suffix; a mint list would be exact.
-      if (SKIP_MINTS.has(mint) || /^[A-Z]{1,6}x$/.test(sym) || !t) continue;
-      bqSince = Math.max(bqSince, t);
-      const id = x.Transaction.Signature+":"+mint+":"+(buy ? "b" : "s");
-      if (solTrades.has(id)) continue;
-      const meta = bqMeta.get(mint);
-      if (!meta || (!meta.photon && now - meta.at > 120e3)) need.add(mint); // DexScreener may not list a brand-new coin yet
-      cands.push({x, b, sl, buy, m, mint, sym, t, id});
-    }
-    // Look up each new coin's Photon-tradable pool (and market cap) on DexScreener, 30 tokens per request.
-    const list = [...need];
-    for (let i = 0; i < list.length; i += 30){
-      const part = list.slice(i, i + 30), best = new Map();
-      const d = await fetch(DS+"/tokens/v1/solana/"+part.join(",")).then(x => x.ok ? x.json() : []).catch(() => []);
-      for (const p of [].concat(d)){
-        const mint = p && p.baseToken && p.baseToken.address, liq = +(p.liquidity?.usd) || 0;
-        if (!mint || !PHOTON_DEX.test(p.dexId || "") || (best.get(mint)?.liq || 0) > liq) continue;
-        best.set(mint, {photon:true, pool:p.pairAddress, mcap:+p.marketCap || +p.fdv || 0, liq, created:+p.pairCreatedAt || 0, at:now});
-      }
-      for (const m of part) bqMeta.set(m, best.get(m) || {photon:false, at:now});
-    }
-    // Keep only coins Photon trades: a pool on a Photon exchange, or (not on DexScreener yet) a swap on one.
-    for (const c of cands){
-      const meta = bqMeta.get(c.mint) || {};
-      if (!meta.photon && !PHOTON_PROTO.test(c.x.Trade.Dex?.ProtocolName || "")) continue;
-      const tr = {id:c.id, pool:meta.pool || c.x.Trade.Market.MarketAddress, sym:c.sym, mint:c.mint, t:c.t, kind:c.buy ? "buy" : "sell",
-        usd:+c.m.AmountInUSD || +(c.buy ? c.sl : c.b).AmountInUSD || 0, wallet:c.x.Transaction.Signer || "", tx:c.x.Transaction.Signature,
-        amount:+c.m.Amount || 0, px:+c.m.PriceInUSD || 0, mcap:meta.mcap || 0, liq:meta.liq || 0, created:meta.created || 0, fresh:!first, seen:now};
-      solTrades.set(c.id, tr);
-      if (c.buy && S.alertTh && tr.usd >= S.alertTh && now - c.t < 10*60e3) notifyBuy(tr);
-    }
-    renderSolSoon(); updateSolStatus(); lastScanAt = now;
+    await bqIngest(rows);
   } catch(e){
     // Three failures in a row (expired token, used-up points) hand the feed back to GeckoTerminal.
     if (++bqFails >= 3){ bqOff = true; $("save-msg").textContent = "Bitquery isn't working ("+e.message+"), so meme scans went back to GeckoTerminal."; updateSolStatus(); }
   } finally { bqBusy = false; }
+}
+// Live stream (Bitquery plans with streaming): each swap arrives as it happens; while it's up, the 10s checks pause.
+// It reconnects with backoff, and the 10s checks cover any gap (they start from the newest swap seen).
+function bqStream(){
+  if (!bqOn() || !isLeader || bqWs || Date.now() < bqNextTry || !("WebSocket" in window)) return;
+  const sock = new WebSocket("wss://streaming.bitquery.io/graphql?token="+encodeURIComponent(S.bqKey), "graphql-ws");
+  bqWs = sock;
+  sock.onopen = () => sock.send(JSON.stringify({type:"connection_init", payload:{}}));
+  sock.onmessage = ev => {
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    if (m.type === "connection_ack"){ sock.send(JSON.stringify({id:"1", type:"start", payload:{query:bqQuery(true)}})); bqLive = true; bqRetry = 0; updateSolStatus(); }
+    else if (m.type === "data"){ const rows = m.payload && m.payload.data && m.payload.data.Solana && m.payload.data.Solana.DEXTrades; if (rows) bqIngest(rows); else sock.close(); }
+    else if (m.type === "error" || m.type === "connection_error" || m.type === "complete") sock.close();
+  };
+  sock.onclose = () => {
+    if (bqWs === sock){ bqWs = null; bqLive = false; bqNextTry = Date.now() + Math.min(300e3, 5e3 * 2 ** bqRetry++); updateSolStatus(); }
+  };
+}
+function bqStopStream(){ if (bqWs){ const s0 = bqWs; bqWs = null; bqLive = false; s0.onclose = null; try { s0.close(); } catch {} } }
+async function bqIngest(rows){
+  const first = !bqSince, now = Date.now(), need = new Set(), cands = [];
+  for (const x of rows){
+    const b = x.Trade.Buy, sl = x.Trade.Sell, buy = !BASE_MINTS.includes(b.Currency.MintAddress), m = buy ? b : sl;
+    const mint = m.Currency.MintAddress, sym = m.Currency.Symbol || "?", t = Date.parse(x.Block.Time);
+    // ponytail: tokenized stocks (SPYx, TSLAx…) dropped by their "x" suffix; a mint list would be exact.
+    if (SKIP_MINTS.has(mint) || /^[A-Z]{1,6}x$/.test(sym) || !t) continue;
+    bqSince = Math.max(bqSince, t);
+    const id = x.Transaction.Signature+":"+mint+":"+(buy ? "b" : "s");
+    if (solTrades.has(id)) continue;
+    const meta = bqMeta.get(mint);
+    if (!meta || (!meta.photon && now - meta.at > 120e3)) need.add(mint); // DexScreener may not list a brand-new coin yet
+    cands.push({x, b, sl, buy, m, mint, sym, t, id});
+  }
+  // Look up each new coin's Photon-tradable pool (and market cap) on DexScreener, 30 tokens per request.
+  const list = [...need];
+  for (let i = 0; i < list.length; i += 30){
+    const part = list.slice(i, i + 30), best = new Map();
+    const d = await fetch(DS+"/tokens/v1/solana/"+part.join(",")).then(x => x.ok ? x.json() : []).catch(() => []);
+    for (const p of [].concat(d)){
+      const mint = p && p.baseToken && p.baseToken.address, liq = +(p.liquidity?.usd) || 0;
+      if (!mint || !PHOTON_DEX.test(p.dexId || "") || (best.get(mint)?.liq || 0) > liq) continue;
+      best.set(mint, {photon:true, pool:p.pairAddress, mcap:+p.marketCap || +p.fdv || 0, liq, created:+p.pairCreatedAt || 0, at:now});
+    }
+    for (const m of part) bqMeta.set(m, best.get(m) || {photon:false, at:now});
+  }
+  // Keep only coins Photon trades: a pool on a Photon exchange, or (not on DexScreener yet) a swap on one.
+  for (const c of cands){
+    const meta = bqMeta.get(c.mint) || {};
+    if (!meta.photon && !PHOTON_PROTO.test(c.x.Trade.Dex?.ProtocolName || "")) continue;
+    const tr = {id:c.id, pool:meta.pool || c.x.Trade.Market.MarketAddress, sym:c.sym, mint:c.mint, t:c.t, kind:c.buy ? "buy" : "sell",
+      usd:+c.m.AmountInUSD || +(c.buy ? c.sl : c.b).AmountInUSD || 0, wallet:c.x.Transaction.Signer || "", tx:c.x.Transaction.Signature,
+      amount:+c.m.Amount || 0, px:+c.m.PriceInUSD || 0, mcap:meta.mcap || 0, liq:meta.liq || 0, created:meta.created || 0, fresh:!first, seen:now};
+    if (solTrades.has(c.id)) continue; // a poll and the stream can both deliver a swap
+    solTrades.set(c.id, tr);
+    if (c.buy && S.alertTh && tr.usd >= S.alertTh && now - c.t < 10*60e3) notifyBuy(tr);
+  }
+  renderSolSoon(); updateSolStatus(); lastScanAt = now;
 }
 function scanProgress(){ let done = 0; for (const a of pools.keys()) if (scannedOnce.has(a)) done++; return done; }
 function updateSolStatus(){
@@ -1488,7 +1516,7 @@ function updateSolStatus(){
   const n = pools.size, done = scanProgress();
   $("t-pools").textContent = n;
   $("t-pools-s").textContent = !n ? "finding pools…" : done < n ? done+" scanned so far" : "busiest checked most often";
-  if (bqOn()) setStatus("st-sol", "live", "Solana: live via Bitquery · every coin");
+  if (bqOn()) setStatus("st-sol", "live", bqLive ? "Solana: streaming live via Bitquery · every coin" : "Solana: live via Bitquery · every coin, checked every 10s");
   else if (!gtLimited) setStatus("st-sol", "live", !n ? "Solana: finding pools" : done < n ? "Solana: first pass "+done+"/"+n : "Solana: live · "+n+" pools");
 }
 const saveFeedSoon = debounce(() => {
@@ -2015,7 +2043,8 @@ $("save").onclick = () => {
   const cgNew = $("cg-key").value.trim();
   if (cgNew !== S.cgKey){ S.cgKey = cgNew; cgOff = false; cgPlan = "demo"; store.set("cgPlan", cgPlan); gGap = gapMin(); }
   const bqNew = $("bq-key").value.trim();
-  if (bqNew !== S.bqKey){ S.bqKey = bqNew; bqOff = false; bqFails = 0; bqSince = 0; bqPoll(); }
+  if (bqNew !== S.bqKey){ S.bqKey = bqNew; bqOff = false; bqFails = 0; bqSince = 0; bqRetry = 0; bqNextTry = 0; bqStopStream(); bqStream(); bqPoll(); }
+  else if (S.solTh !== old.solTh && bqWs){ bqStopStream(); bqNextTry = 0; bqStream(); } // resubscribe with the new whale size
   for (const k of ["solTh","alertTh","minVol","stkTh","watch","key","cgKey","bqKey"]) store.set(k, S[k]);
   fillSettings();
   if (S.solTh < old.solTh){ for (const p of pools.values()) p.lastScan = 0; scannedOnce.clear(); }
@@ -2051,9 +2080,9 @@ function startLeader(){
   discoverDexScreener().then(pulse);
   if (!pools.size) discoverGT();
   if (!scanning) scanLoop();
-  refreshStocks(); refreshNews(); bqPoll(); updateSolStatus();
+  refreshStocks(); refreshNews(); bqStream(); bqPoll(); updateSolStatus();
 }
-function stopLeader(){ if (ws){ ws.onclose = null; try{ ws.close(); }catch{} ws = null; } clearTimeout(wsTimer); }
+function stopLeader(){ if (ws){ ws.onclose = null; try{ ws.close(); }catch{} ws = null; } clearTimeout(wsTimer); bqStopStream(); }
 function heartbeat(){
   const was = isLeader;
   isLeader = claimLeader();
@@ -2073,7 +2102,7 @@ if (isLeader) startLeader(); else followerSync();
 setInterval(() => { if (isLeader) discoverGT(); }, 5*60e3);
 setInterval(() => { if (isLeader) discoverDexScreener().then(pulse); }, 2*60e3);
 setInterval(() => { if (isLeader) pulse(); }, 15e3);
-setInterval(() => { if (isLeader) bqPoll(); }, 10e3);
+setInterval(() => { if (isLeader){ bqStream(); bqPoll(); } }, 10e3);
 setInterval(() => { if (isLeader){ refreshStocks(); refreshNews(); } }, 20e3);
 setInterval(renderSignals, 30e3);
 setInterval(() => {
