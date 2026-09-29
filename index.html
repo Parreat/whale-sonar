@@ -5,39 +5,44 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Whale Sonar</title>
 <script>if (/[?&]view=trade(&|$)/.test(location.search)) document.documentElement.classList.add("tradeview");</script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<script>try{var t=JSON.parse(localStorage.getItem("ws:theme"));if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}</script>
+<meta name="description" content="Live whale trades in Solana meme coins and U.S. stocks, stock signals, ranked market news, and a free daily newsletter.">
+<meta name="theme-color" content="#081018">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <style>
+/* "Abyss" theme: deep-sea navy with a sonar-cyan accent; green and red stay for buys and sells. */
 :root{
   color-scheme: dark;
-  --ground:#0E1116; --surface:#151A21; --surface-2:#1B212A; --line:#262D38;
-  --text:#E2E5EA; --muted:#8B93A0; --faint:#59616D;
-  --sonar:#4C8DF6; --sonar-dim:rgba(76,141,246,.14);
-  --buy:#26A69A; --sell:#EF5350; --stock:#D9A33A;
-  --body:"IBM Plex Sans", system-ui, -apple-system, sans-serif;
-  --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --ground:#081018; --surface:#0E1A24; --surface-2:#142331; --line:#223445;
+  --text:#E3ECF3; --muted:#8CA0B2; --faint:#566B7D;
+  --sonar:#22D3EE; --sonar-dim:rgba(34,211,238,.13);
+  --buy:#4ADE80; --sell:#F87171; --stock:#FBBF24;
+  --glow:radial-gradient(1200px 380px at 12% -120px, rgba(34,211,238,.10), transparent 70%);
+  --body:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono:ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]){
     color-scheme: light;
-    --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#F0F2F5; --line:#DCE0E5;
-    --text:#131722; --muted:#5D6572; --faint:#9AA1AC;
-    --sonar:#1F5FD1; --sonar-dim:rgba(31,95,209,.10);
-    --buy:#08897A; --sell:#D32F2F; --stock:#A86F0A;
+    --ground:#F3F7FB; --surface:#FFFFFF; --surface-2:#EAF1F7; --line:#D5DEE9;
+    --text:#0B1726; --muted:#5B6B80; --faint:#93A3B5;
+    --sonar:#0E7490; --sonar-dim:rgba(14,116,144,.10);
+    --buy:#15803D; --sell:#B91C1C; --stock:#B45309;
+    --glow:radial-gradient(1200px 380px at 12% -120px, rgba(14,116,144,.10), transparent 70%);
   }
 }
 :root[data-theme="light"]{
   color-scheme: light;
-  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#F0F2F5; --line:#DCE0E5;
-  --text:#131722; --muted:#5D6572; --faint:#9AA1AC;
-  --sonar:#1F5FD1; --sonar-dim:rgba(31,95,209,.10);
-  --buy:#08897A; --sell:#D32F2F; --stock:#A86F0A;
+  --ground:#F3F7FB; --surface:#FFFFFF; --surface-2:#EAF1F7; --line:#D5DEE9;
+  --text:#0B1726; --muted:#5B6B80; --faint:#93A3B5;
+  --sonar:#0E7490; --sonar-dim:rgba(14,116,144,.10);
+  --buy:#15803D; --sell:#B91C1C; --stock:#B45309;
+  --glow:radial-gradient(1200px 380px at 12% -120px, rgba(14,116,144,.10), transparent 70%);
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0}
-body{background:var(--ground);color:var(--text);font:14px/1.5 var(--body);padding:0 16px 48px}
+body{background:var(--glow),var(--ground);background-repeat:no-repeat;color:var(--text);font:14px/1.5 var(--body);padding:0 16px 48px;min-height:100vh}
 a{color:inherit}
 .wrap{max-width:1320px;margin:0 auto}
 .tradeview .main{display:none}
@@ -222,6 +227,62 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
 .arow .acts{display:flex;gap:10px;align-items:center;font-size:12px}
 .copy{font-size:12px;padding:3px 9px}
 
+/* account, newsletter and footer */
+.hbtns{display:flex;gap:8px;align-items:center}
+.iconbtn{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;width:32px;height:32px;display:inline-grid;place-items:center;cursor:pointer;color:var(--muted)}
+.iconbtn:hover{color:var(--text);border-color:var(--sonar)}
+.iconbtn svg{width:16px;height:16px}
+.acctbtn{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.promo{margin-top:24px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:18px 20px;border-radius:10px;border:1px solid color-mix(in srgb,var(--sonar) 35%,var(--line));background:linear-gradient(120deg,var(--sonar-dim),transparent 65%),var(--surface)}
+.promo h2{font-size:16px;margin-bottom:4px}
+.promo p{margin:0;color:var(--muted);font-size:13px;max-width:70ch}
+.promo .row{justify-content:flex-end}
+dialog.acct{border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);padding:0;width:min(440px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto}
+dialog.acct::backdrop{background:rgba(3,8,12,.65);backdrop-filter:blur(2px)}
+.dhd{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.dhd h2{font-size:16px}
+.dhd .iconbtn{margin-left:auto}
+.dbody{padding:18px 20px 20px}
+.dbody form{display:grid;gap:12px}
+.dbody label{display:grid;gap:6px;font-size:12px;color:var(--muted)}
+.dbody input[type=email],.dbody input[type=password]{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:9px 11px;font-size:14px;width:100%}
+.check{display:grid!important;grid-template-columns:18px 1fr;gap:10px!important;align-items:start;font-size:13px!important;color:var(--text)!important;line-height:1.45}
+.check input{width:16px;height:16px;margin:2px 0 0;accent-color:var(--sonar)}
+.dbody .btn.primary{padding:9px 14px}
+.dlinks{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:14px}
+.dlinks button{background:none;border:0;padding:0;color:var(--sonar);cursor:pointer;font-size:12px;text-decoration:underline}
+.dmsg{font-size:13px;margin:0;min-height:0}
+.dmsg:empty{display:none}
+.dmsg.err{color:var(--sell)}
+.dmsg.ok{color:var(--buy)}
+.kv{display:grid;gap:10px;margin-bottom:16px}
+.kv>div{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;font-size:13px}
+.switch{position:relative;width:40px;height:22px;flex:none}
+.switch input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.switch span{position:absolute;inset:0;border-radius:11px;background:var(--line);transition:background .2s;pointer-events:none}
+.switch span::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--text);transition:transform .2s}
+.switch input:checked+span{background:var(--sonar)}
+.switch input:checked+span::after{transform:translateX(18px);background:var(--ground)}
+.switch input:focus-visible+span{outline:2px solid var(--sonar);outline-offset:2px}
+.danger{color:var(--sell)!important;border-color:color-mix(in srgb,var(--sell) 45%,var(--line))!important}
+details.more{border-top:1px solid var(--line);margin-top:16px;padding-top:12px}
+details.more summary{cursor:pointer;font-size:13px;color:var(--muted)}
+details.more form{margin-top:12px}
+.issues{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:13px}
+.issues a{color:var(--text)}
+.sitefoot{margin-top:28px;padding-top:16px;border-top:1px solid var(--line);display:flex;gap:8px 18px;flex-wrap:wrap;align-items:baseline;font-size:12px;color:var(--muted)}
+.sitefoot a{color:var(--muted)}
+.sitefoot a:hover{color:var(--sonar)}
+.sitefoot .fine2{flex-basis:100%;max-width:110ch}
+@media (max-width:560px){
+  .hbtns{order:1;margin-left:auto}
+  .status{order:2;flex-basis:100%;margin-left:0}
+  .brand small{display:none}
+  .promo{grid-template-columns:1fr}
+  .promo .row{justify-content:flex-start}
+  .acctbtn{max-width:140px}
+}
+
 @media (max-width:980px){
   .split{grid-template-columns:1fr}
   .feed{max-height:none}
@@ -245,13 +306,17 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
 <div class="wrap main">
 <header>
   <div class="brand">
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4v16M12 7v13M19 3v17" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="9" width="4" height="6" rx="1" fill="var(--sell)"/><rect x="10" y="11" width="4" height="5" rx="1" fill="var(--buy)"/><rect x="17" y="6" width="4" height="8" rx="1" fill="var(--buy)"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4v16M12 7v13M19 3v17" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="9" width="4" height="6" rx="1" fill="var(--sell)"/><rect x="10" y="11" width="4" height="5" rx="1" fill="var(--buy)"/><rect x="17" y="6" width="4" height="8" rx="1" fill="var(--sonar)"/></svg>
     Whale Sonar <small>stocks · solana memes</small>
   </div>
   <div class="status">
     <span id="st-sol"><span class="dot"></span>Solana: starting</span>
     <span id="st-stk"><span class="dot"></span>Stocks: no key</span>
     <span id="st-mkt" class="muted"></span>
+  </div>
+  <div class="hbtns">
+    <button class="iconbtn" id="theme-btn" type="button" aria-label="Color theme: match system" title="Color theme: match system"></button>
+    <button class="btn acctbtn" id="acct-btn" type="button" hidden>Sign in</button>
   </div>
 </header>
 
@@ -374,6 +439,14 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
   </div>
 </section>
 
+<section class="promo" id="promo" hidden aria-labelledby="promo-h">
+  <div>
+    <h2 id="promo-h">Whale Sonar Daily, free every weekday morning</h2>
+    <p>The day's most market-moving headlines, index moves, and the stocks our signal screen flags for strength and weakness, with the reasons behind each. One email, no spam, unsubscribe in one click. Information only, not financial advice.</p>
+  </div>
+  <div class="row"><button class="btn primary" id="promo-go" type="button">Get the newsletter</button><a class="sm" id="promo-latest" href="/issue/latest" target="_blank" rel="noopener" hidden>Read today's issue</a></div>
+</section>
+
 <details class="settings" id="settings">
   <summary>Settings: thresholds, watchlist, extra coins</summary>
   <div class="sgrid">
@@ -390,7 +463,81 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
 </details>
 
 <p class="note">Every 15 seconds the site checks 5-minute trading volume on every meme pool it tracks (from DexScreener), then pulls whale swaps from the pools where the most money is moving (from GeckoTerminal, which allows about 10 requests a minute). New pools come from GeckoTerminal's trending and new lists plus DexScreener's boosted and newly listed tokens; only pools with at least your minimum 24h volume and $10K of liquidity are tracked. Click any swap to open its details in a new tab. Stock prints, quotes, news, analyst ratings and insider filings come from Finnhub, and each print is tagged with the tick test because trades don't say who bought or sold. Extra Whale Sonar tabs mirror the first one instead of making their own requests. None of this is financial advice.</p>
+<footer class="sitefoot">
+  <span>© <span id="yr"></span> Whale Sonar</span>
+  <a href="terms.html">Terms of Use</a>
+  <a href="privacy.html">Privacy Policy</a>
+  <a href="disclaimer.html">Investment Disclaimer</a>
+  <span class="fine2">Whale Sonar shows public market data for information only. It is not investment advice or a recommendation to buy or sell anything, and data may be delayed or wrong. Crypto and meme coins are extremely risky. No cookies except one to keep you signed in; no ads or tracking.</span>
+</footer>
 </div>
+
+<dialog class="acct" id="acct" aria-labelledby="acct-title">
+  <div class="dhd"><h2 id="acct-title">Account</h2><button class="iconbtn" id="acct-close" type="button" aria-label="Close"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
+  <div class="dbody">
+    <div data-v="signup">
+      <form id="f-signup" novalidate>
+        <label>Email<input type="email" name="email" autocomplete="email" maxlength="254" required></label>
+        <label>Password <span class="faint">(10+ characters; a short phrase works well)</span><input type="password" name="password" autocomplete="new-password" minlength="10" maxlength="200" required></label>
+        <label class="check"><input type="checkbox" name="newsletter"><span>Email me <b>Whale Sonar Daily</b> on weekday mornings: top market news and stocks to watch. Unsubscribe anytime.</span></label>
+        <label class="check"><input type="checkbox" name="agree" required><span>I'm 18 or older and agree to the <a href="terms.html" target="_blank">Terms of Use</a> and <a href="privacy.html" target="_blank">Privacy Policy</a>. I understand nothing here is financial advice (<a href="disclaimer.html" target="_blank">disclaimer</a>).</span></label>
+        <p class="dmsg" role="status" aria-live="polite"></p>
+        <button class="btn primary" type="submit">Create account</button>
+      </form>
+      <div class="dlinks">Have an account? <button type="button" data-go="login">Sign in</button></div>
+    </div>
+    <div data-v="login" hidden>
+      <form id="f-login" novalidate>
+        <label>Email<input type="email" name="email" autocomplete="username" maxlength="254" required></label>
+        <label>Password<input type="password" name="password" autocomplete="current-password" maxlength="200" required></label>
+        <p class="dmsg" role="status" aria-live="polite"></p>
+        <button class="btn primary" type="submit">Sign in</button>
+      </form>
+      <div class="dlinks"><button type="button" data-go="forgot">Forgot password?</button><span>New here? <button type="button" data-go="signup">Create an account</button></span></div>
+    </div>
+    <div data-v="forgot" hidden>
+      <form id="f-forgot" novalidate>
+        <p class="muted" style="margin:0;font-size:13px">Enter your account's email and we'll send a link to choose a new password.</p>
+        <label>Email<input type="email" name="email" autocomplete="email" maxlength="254" required></label>
+        <p class="dmsg" role="status" aria-live="polite"></p>
+        <button class="btn primary" type="submit">Send reset link</button>
+      </form>
+      <div class="dlinks"><button type="button" data-go="login">Back to sign in</button></div>
+    </div>
+    <div data-v="sent" hidden>
+      <p class="dmsg ok" id="sent-msg" role="status"></p>
+      <div class="dlinks"><button type="button" data-go="login">Back to sign in</button></div>
+    </div>
+    <div data-v="account" hidden>
+      <div class="kv">
+        <div><span>Signed in as</span><b id="me-email" class="mono" style="overflow-wrap:anywhere;text-align:right"></b></div>
+        <div><span><b>Whale Sonar Daily</b><br><span class="muted sm">Weekday mornings. Not financial advice.</span></span><label class="switch"><input type="checkbox" id="me-news" aria-label="Get Whale Sonar Daily"><span></span></label></div>
+      </div>
+      <p class="dmsg" id="me-msg" role="status" aria-live="polite"></p>
+      <h3 style="margin-top:4px">Recent issues</h3>
+      <ul class="issues" id="me-issues"><li class="muted">None yet.</li></ul>
+      <div class="row" style="margin-top:16px"><button class="btn" id="me-logout" type="button">Sign out</button><a class="btn" href="/api/export" download>Download my data</a></div>
+      <details class="more">
+        <summary>Change password</summary>
+        <form id="f-password" novalidate>
+          <label>Current password<input type="password" name="current" autocomplete="current-password" maxlength="200" required></label>
+          <label>New password<input type="password" name="password" autocomplete="new-password" minlength="10" maxlength="200" required></label>
+          <p class="dmsg" role="status" aria-live="polite"></p>
+          <button class="btn primary" type="submit">Change password</button>
+        </form>
+      </details>
+      <details class="more">
+        <summary>Delete account</summary>
+        <form id="f-delete" novalidate>
+          <p class="muted" style="margin:0;font-size:13px">This permanently erases your account and newsletter subscription. It can't be undone.</p>
+          <label>Password<input type="password" name="password" autocomplete="current-password" maxlength="200" required></label>
+          <p class="dmsg" role="status" aria-live="polite"></p>
+          <button class="btn danger" type="submit">Delete my account</button>
+        </form>
+      </details>
+    </div>
+  </div>
+</dialog>
 
 <script>
 (() => {
@@ -446,7 +593,7 @@ const photonUrl = pool => "https://photon-sol.tinyastro.io/en/lp/"+pool;
 const walletUrl = w => "https://birdeye.so/solana/wallet-analyzer/"+w;
 const B58 = /^[1-9A-HJ-NP-Za-km-z]{32,90}$/;
 const DS = "https://api.dexscreener.com";
-const BRAND_SVG = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4v16M12 7v13M19 3v17" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="9" width="4" height="6" rx="1" fill="var(--sell)"/><rect x="10" y="11" width="4" height="5" rx="1" fill="var(--buy)"/><rect x="17" y="6" width="4" height="8" rx="1" fill="var(--buy)"/></svg>';
+const BRAND_SVG = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4v16M12 7v13M19 3v17" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="9" width="4" height="6" rx="1" fill="var(--sell)"/><rect x="10" y="11" width="4" height="5" rx="1" fill="var(--buy)"/><rect x="17" y="6" width="4" height="8" rx="1" fill="var(--sonar)"/></svg>';
 const fact = (k, v, cls) => '<div class="fact"><div class="k">'+esc(k)+'</div><div class="v '+(cls || "")+'">'+esc(v)+'</div></div>';
 
 // The feed is saved as compact rows so the trade tab can show a wallet's other swaps.
@@ -578,6 +725,131 @@ function tradeView(q){
 
 const params = new URLSearchParams(location.search);
 if (params.get("view") === "trade"){ tradeView(params); return; }
+
+// ---------- color theme: system, light or dark ----------
+const THEMES = ["system","light","dark"];
+const THEME_ICON = {
+  system:'<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg>',
+  light:'<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="currentColor"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6L13 13M3 13l1.4-1.4M11.6 4.4L13 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  dark:'<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 10.2A6 6 0 0 1 5.8 2.5a6 6 0 1 0 7.7 7.7z" fill="currentColor"/></svg>'
+};
+function applyTheme(t){
+  if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  const label = "Color theme: "+(t === "system" ? "match system" : t);
+  $("theme-btn").innerHTML = THEME_ICON[t]; $("theme-btn").setAttribute("aria-label", label); $("theme-btn").title = label+" (click to change)";
+}
+let theme = store.get("theme", "system");
+if (!THEMES.includes(theme)) theme = "system";
+applyTheme(theme);
+$("theme-btn").onclick = () => { theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]; store.set("theme", theme); applyTheme(theme); };
+$("yr").textContent = new Date().getFullYear();
+
+// ---------- accounts and the newsletter (only when the Whale Sonar server is running) ----------
+const wantAccount = location.hash === "#account";
+const acct = {user:null, view:"signup"};
+async function api(path, body){
+  const r = await fetch(path, body === undefined ? {credentials:"same-origin"} : {method:"POST", credentials:"same-origin", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+  let data = null; try { data = await r.json(); } catch {}
+  if (!data) throw Object.assign(new Error("The account server isn't reachable right now."), {offline:true});
+  if (!r.ok) throw new Error(data.error || "Something went wrong. Try again.");
+  return data;
+}
+function acctView(v){
+  acct.view = v;
+  for (const el of $("acct").querySelectorAll("[data-v]")) el.hidden = el.dataset.v !== v;
+  $("acct-title").textContent = {signup:"Create your free account", login:"Sign in", forgot:"Reset your password", sent:"Check your email", account:"Your account"}[v];
+  for (const m of $("acct").querySelectorAll(".dmsg:not(#sent-msg)")) { m.textContent = ""; m.className = "dmsg"; }
+  if (v === "account") fillAccount();
+  const first = $("acct").querySelector('[data-v="'+v+'"] input:not([type=checkbox])');
+  if (first && $("acct").open) first.focus();
+}
+function openAcct(v){
+  acctView(v || (acct.user ? "account" : "signup"));
+  if (!$("acct").open) $("acct").showModal();
+  const first = $("acct").querySelector('[data-v="'+acct.view+'"] input:not([type=checkbox])');
+  if (first) first.focus();
+}
+function syncAcct(){
+  const u = acct.user;
+  $("acct-btn").hidden = false;
+  $("acct-btn").textContent = u ? u.email : "Sign in";
+  $("acct-btn").title = u ? "Your account" : "Sign in or create an account";
+  $("promo").hidden = !!(u && u.newsletter);
+  if (acct.view === "account" && !u) acctView("login");
+}
+async function loadIssues(){
+  try {
+    const {issues} = await api("/api/issues");
+    $("promo-latest").hidden = !issues.length;
+    $("me-issues").innerHTML = issues.length ? issues.slice(0, 5).map(i => '<li><a href="/issue/'+esc(i.day)+'" target="_blank" rel="noopener">'+esc(i.subject)+'</a></li>').join("") : '<li class="muted">None yet. The first one goes out on the next weekday morning.</li>';
+  } catch {}
+}
+function fillAccount(){
+  if (!acct.user) return;
+  $("me-email").textContent = acct.user.email;
+  $("me-news").checked = acct.user.newsletter;
+}
+function formMsg(form, text, ok){ const m = form.querySelector(".dmsg"); m.textContent = text || ""; m.className = "dmsg "+(ok ? "ok" : "err"); }
+function wire(id, fn){
+  const form = $(id);
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const btn = form.querySelector("button[type=submit]");
+    const d = Object.fromEntries(new FormData(form));
+    btn.disabled = true; formMsg(form, "");
+    try { await fn(d, form); } catch(err){ formMsg(form, err.message); } finally { btn.disabled = false; }
+  });
+}
+wire("f-signup", async (d, form) => {
+  if (!/^\S+@\S+\.\S+$/.test(d.email || "")) throw new Error("Enter a valid email address.");
+  if ((d.password || "").length < 10) throw new Error("Use a password with at least 10 characters.");
+  if (!form.agree.checked) throw new Error("Please confirm you're 18 or older and agree to the Terms and Privacy Policy.");
+  const r = await api("/api/signup", {email:d.email, password:d.password, newsletter:form.newsletter.checked, agree:true});
+  form.reset(); $("sent-msg").textContent = r.message; acctView("sent");
+});
+wire("f-login", async (d, form) => {
+  const r = await api("/api/login", {email:d.email, password:d.password});
+  form.reset(); acct.user = r.user; syncAcct(); acctView("account");
+});
+wire("f-forgot", async (d, form) => {
+  const r = await api("/api/forgot", {email:d.email});
+  form.reset(); $("sent-msg").textContent = r.message; acctView("sent");
+});
+wire("f-password", async (d, form) => {
+  const r = await api("/api/password", {current:d.current, password:d.password});
+  form.reset(); formMsg(form, r.message, true);
+});
+wire("f-delete", async (d, form) => {
+  if (!confirm("Delete your Whale Sonar account for good? This can't be undone.")) return;
+  await api("/api/delete", {password:d.password});
+  form.reset(); acct.user = null; syncAcct();
+  $("sent-msg").textContent = "Your account and everything stored with it has been deleted."; acctView("sent");
+});
+$("me-news").onchange = async e => {
+  const on = e.target.checked;
+  try {
+    const r = await api("/api/newsletter", {on});
+    acct.user = r.user; syncAcct();
+    $("me-msg").className = "dmsg ok";
+    $("me-msg").textContent = on ? "Subscribed. Whale Sonar Daily arrives on weekday mornings." : "Unsubscribed. You won't get any more issues.";
+  } catch(err){ e.target.checked = !on; $("me-msg").className = "dmsg err"; $("me-msg").textContent = err.message; }
+};
+$("me-logout").onclick = async () => { try { await api("/api/logout", {}); } catch {} acct.user = null; syncAcct(); $("acct").close(); };
+$("acct").addEventListener("click", e => {
+  const go = e.target.closest("[data-go]"); if (go) acctView(go.dataset.go);
+  if (e.target === $("acct")) $("acct").close(); // click on the backdrop
+});
+$("acct-close").onclick = () => $("acct").close();
+$("acct-btn").onclick = () => { loadIssues(); openAcct(); };
+$("promo-go").onclick = () => {
+  if (acct.user){ openAcct("account"); $("me-news").focus(); return; }
+  openAcct("signup"); $("f-signup").newsletter.checked = true;
+};
+api("/api/me").then(r => {
+  acct.user = r.user; syncAcct(); loadIssues();
+  $("promo").hidden = !!(r.user && r.user.newsletter);
+  if (wantAccount) openAcct();
+}).catch(() => { /* static hosting without the server: accounts stay hidden */ });
 
 // ---------- settings ----------
 const MARKETS = {
