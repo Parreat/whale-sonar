@@ -146,6 +146,17 @@ h3{font:600 12px var(--body);text-transform:uppercase;letter-spacing:.08em;color
 .sell .kind,.down .kind{color:var(--sell);background:color-mix(in srgb,var(--sell) 14%,transparent)}
 .flat .kind{color:var(--stock);background:color-mix(in srgb,var(--stock) 14%,transparent)}
 .tag{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:0 5px;border-radius:3px;border:1px solid color-mix(in srgb,var(--stock) 50%,transparent);color:var(--stock)}
+.mbadge{display:inline-block;width:11px;height:11px;border-radius:3px;flex:none;align-self:center;box-shadow:0 0 0 1px var(--line)}
+.dhead h1 .mbadge{width:18px;height:18px;border-radius:5px;margin-right:10px;vertical-align:2px}
+.tag.seen{border-color:color-mix(in srgb,var(--sonar) 55%,transparent);color:var(--sonar)}
+.tag.twin{border-color:color-mix(in srgb,var(--sell) 60%,transparent);color:var(--sell)}
+.feed>li.seen .sym{color:var(--muted)}
+.addr.coin{color:var(--faint)}
+.seennote{font-size:13px;color:var(--muted);margin-top:8px;display:grid;gap:6px}
+.seennote .tag{margin-right:6px}
+.twinwarn{color:var(--text)}
+.twinwarn code{font:12px var(--mono)}
+.twinwarn .mbadge{margin:0 4px 0 2px;vertical-align:-1px}
 .line2{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;margin-top:2px}
 .usd{font:600 15px var(--mono);font-variant-numeric:tabular-nums;text-align:right}
 .ago{font-size:11px;color:var(--muted);text-align:right}
@@ -538,6 +549,7 @@ details.more form{margin-top:12px}
     <label for="key">Finnhub API key<span class="row"><input type="password" id="key" autocomplete="off"><button class="btn" id="key-clear" type="button">Clear</button></span></label>
     <label for="cg-key">CoinGecko API key (optional: faster meme scans; free Demo key works)<input type="password" id="cg-key" autocomplete="off" placeholder="CG-…"></label>
     <label for="extra">Always scan this Solana token (mint address)<span class="row"><input type="text" id="extra" placeholder="e.g. DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"><button class="btn" id="extra-add" type="button">Add</button></span><span id="extra-msg"></span></label>
+    <label>Coins you've viewed<span class="row"><span class="muted" id="seen-count"></span><button class="btn" id="seen-clear" type="button">Clear list</button></span></label>
   </div>
   <div class="row" style="padding:0 16px 18px"><button class="btn primary" id="save" type="button">Apply settings</button><span class="muted sm" id="save-msg"></span></div>
 </details>
@@ -676,6 +688,39 @@ const DS = "https://api.dexscreener.com";
 const BRAND_SVG = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4v16M12 7v13M19 3v17" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="9" width="4" height="6" rx="1" fill="var(--sell)"/><rect x="10" y="11" width="4" height="5" rx="1" fill="var(--buy)"/><rect x="17" y="6" width="4" height="8" rx="1" fill="var(--sonar)"/></svg>';
 const fact = (k, v, cls) => '<div class="fact"><div class="k">'+esc(k)+'</div><div class="v '+(cls || "")+'">'+esc(v)+'</div></div>';
 
+// ---------- coins you've viewed, keyed by mint address so look-alike tickers stay apart ----------
+const SEEN_MAX = 600;
+function seenMap(){ const m = store.get("seen", null); return m && typeof m === "object" && !Array.isArray(m) ? m : {}; }
+function markSeen(mint, sym){
+  if (!mint || !B58.test(mint)) return;
+  const m = seenMap(), prev = m[mint];
+  m[mint] = {first:prev ? prev.first : Date.now(), last:Date.now(), sym:String(sym || (prev && prev.sym) || "?").slice(0, 40)};
+  const keys = Object.keys(m);
+  if (keys.length > SEEN_MAX) for (const k of keys.sort((a, b) => m[a].last - m[b].last).slice(0, keys.length - SEEN_MAX)) delete m[k];
+  store.set("seen", m);
+}
+// Other coins you've viewed that share this ticker but have a different mint.
+function lookalikes(mint, sym, m = seenMap()){
+  const key = String(sym || "").toUpperCase();
+  return key ? Object.entries(m).filter(([k, v]) => k !== mint && String(v.sym).toUpperCase() === key).map(([k, v]) => ({mint:k, ...v})) : [];
+}
+// Two colors derived from the mint, so the same coin always gets the same badge.
+function mintBadge(mint){
+  if (!mint) return "";
+  let h = 2166136261;
+  for (let i = 0; i < mint.length; i++){ h ^= mint.charCodeAt(i); h = Math.imul(h, 16777619); }
+  const a = (h >>> 0) % 360, b = (a + 90 + ((h >>> 9) % 180)) % 360;
+  return '<span class="mbadge" title="Coin address '+esc(mint)+'" style="background:linear-gradient(135deg,hsl('+a+' 70% 55%) 50%,hsl('+b+' 70% 45%) 50%)"></span>';
+}
+// Tags for a row: viewed before, and/or a warning that a coin you viewed has this same ticker.
+function seenTags(mint, sym, m){
+  if (!mint) return "";
+  const me = m[mint], twins = lookalikes(mint, sym, m);
+  let out = "";
+  if (me) out += '<span class="tag seen" title="You opened this exact coin '+esc(ago(me.last))+'">✓ viewed</span>';
+  if (twins.length) out += '<span class="tag twin" title="You viewed a different coin with the ticker '+esc(sym)+': '+esc(twins.map(t => short(t.mint)).join(", "))+'. Check the address before you buy.">'+(me ? "another "+esc(sym)+" exists" : "different "+esc(sym)+"")+'</span>';
+  return out;
+}
 // The feed is saved as compact rows so the trade tab can show a wallet's other swaps.
 function readFeedRows(){
   const f = store.get("feed", null);
@@ -688,15 +733,15 @@ function tradeHref(t){
     c:String(Math.round(t.mcap || 0)), l:String(Math.round(t.liq || 0)), d:String(t.created || 0)});
   return location.pathname+"?"+q.toString();
 }
-function solRowHTML(t){
+function solRowHTML(t, seen = seenMap()){
   const impact = t.liq ? t.usd / t.liq * 100 : null;
   const newPool = t.created && t.t - t.created < 864e5;
   const side = t.kind === "sell" ? "sell" : "buy";
-  return '<li class="'+side+(t.big ? ' tier-3' : '')+(t.flash ? ' new' : '')+'">'+
-    '<a class="rowlink" href="'+esc(tradeHref(t))+'" target="_blank" rel="noopener" title="Open this trade in a new tab">'+
+  return '<li class="'+side+(t.big ? ' tier-3' : '')+(t.flash ? ' new' : '')+(t.mint && seen[t.mint] ? ' seen' : '')+'">'+
+    '<a class="rowlink" href="'+esc(tradeHref(t))+'" target="_blank" rel="noopener" title="Open this trade in a new tab" data-mint="'+esc(t.mint || "")+'" data-sym="'+esc(t.sym)+'">'+
     '<span class="stripe"></span><div>'+
-    '<div class="line1"><span class="sym">'+esc(t.sym)+'</span><span class="kind">'+side+'</span><span class="muted sm">'+num(t.amount)+' '+esc(t.sym)+'</span>'+(newPool ? '<span class="tag">new pool</span>' : '')+(t.rep > 1 ? '<span class="tag" title="Whale buys of this coin from this wallet in the last 6 hours">'+t.rep+(t.rep >= 10 ? '× · likely a bot' : '× buyer')+'</span>' : '')+'</div>'+
-    '<div class="line2"><span class="addr">'+esc(short(t.wallet))+'</span><span>MC '+(t.mcap ? usd(t.mcap) : '—')+'</span>'+
+    '<div class="line1">'+mintBadge(t.mint)+'<span class="sym">'+esc(t.sym)+'</span><span class="kind">'+side+'</span><span class="muted sm">'+num(t.amount)+' '+esc(t.sym)+'</span>'+(newPool ? '<span class="tag">new pool</span>' : '')+(t.rep > 1 ? '<span class="tag" title="Whale buys of this coin from this wallet in the last 6 hours">'+t.rep+(t.rep >= 10 ? '× · likely a bot' : '× buyer')+'</span>' : '')+seenTags(t.mint, t.sym, seen)+'</div>'+
+    '<div class="line2"><span class="addr" title="Wallet">'+esc(short(t.wallet))+'</span>'+(t.mint ? '<span class="addr coin" title="Coin address '+esc(t.mint)+'">coin '+esc(short(t.mint))+'</span>' : '')+'<span>MC '+(t.mcap ? usd(t.mcap) : '—')+'</span>'+
     (impact != null && impact >= 0.1 ? '<span>'+(impact >= 10 ? impact.toFixed(0) : impact.toFixed(1))+'% of pool</span>' : '')+'</div></div>'+
     '<div><div class="usd">'+usd(t.usd)+'</div><div class="ago" data-t="'+t.t+'">'+ago(t.t)+'</div></div></a></li>';
 }
@@ -723,6 +768,13 @@ function tradeView(q){
   const impact = T.liq ? T.usd / T.liq * 100 : null;
   const when = T.t ? new Date(T.t) : null;
   const home = esc(location.pathname);
+  // Say whether this exact coin was opened before (by address, not ticker), then record this visit.
+  const seen0 = seenMap(), before = T.mint && seen0[T.mint], twins = T.mint ? lookalikes(T.mint, T.sym, seen0) : [];
+  const seenNote = !T.mint ? "" : '<div class="seennote"><div>'+
+    (before ? '<span class="tag seen">✓ viewed</span> You first opened this coin '+esc(ago(before.first))+(before.last !== before.first ? ', last '+esc(ago(before.last)) : '')+'.' : '<span class="tag">new to you</span> First time you\'ve opened this coin.')+'</div>'+
+    (twins.length ? '<div class="twinwarn"><span class="tag twin">heads up</span> You\'ve also viewed '+(twins.length === 1 ? 'a different coin' : twins.length+' different coins')+' called '+esc(T.sym)+': '+twins.map(t => mintBadge(t.mint)+'<code>'+esc(short(t.mint))+'</code> '+esc(ago(t.last))).join(", ")+'. Check the token address below before you buy.</div>' : '')+
+    '</div>';
+  markSeen(T.mint, T.sym);
   const w = document.createElement("div");
   w.className = "wrap";
   w.innerHTML =
@@ -730,7 +782,7 @@ function tradeView(q){
     '<main class="detail">'+
       '<section class="dhead '+T.kind+'"><img id="d-img" alt="" hidden>'+
         '<div><div class="eyebrow '+T.kind+'"><span class="kind">whale '+T.kind+'</span><span>'+(when ? esc(when.toLocaleString()) : "")+'</span><span id="d-ago">'+(T.t ? ago(T.t) : "")+'</span></div>'+
-        '<h1>'+esc(T.sym)+'</h1><div class="muted sm" id="d-name">'+(T.mint ? esc(short(T.mint)) : "")+'</div></div>'+
+        '<h1>'+mintBadge(T.mint)+esc(T.sym)+'</h1><div class="muted sm" id="d-name">'+(T.mint ? esc(short(T.mint)) : "")+'</div>'+seenNote+'</div>'+
         '<div class="big">'+usd(T.usd)+'</div></section>'+
       '<section class="actions">'+ext(L.photon, "Buy "+esc(T.sym)+" on Photon ↗", "cta photon")+ext(L.birdeye, "Track this wallet ↗", "cta track")+'</section>'+
       '<p class="links sm"><span class="muted">Wallet also on</span>'+ext(L.gmgn, "GMGN")+ext(L.solW, "Solscan")+'<span class="muted">· Coin charts</span>'+ext(L.dex, "DexScreener")+ext(L.gecko, "GeckoTerminal")+'</p>'+
@@ -1375,7 +1427,7 @@ const saveFeedSoon = debounce(() => {
     .map(t => [t.id, t.pool, t.sym, t.mint, t.t, t.kind, Math.round(t.usd*100)/100, t.wallet, t.tx, t.amount, t.px, Math.round(t.mcap || 0), Math.round(t.liq || 0), t.created || 0]);
   store.set("feed", {v:1, at:Date.now(), rows});
   store.set("solStatus", {pools:pools.size, done:scanProgress(), at:Date.now(), lastScanAt});
-  store.set("hot", {at:Date.now(), rows:hotPools().map(p => [p.addr, p.sym, p.v5, p.b5, p.s5, p.pc5, Math.round(p.mcap || 0), Math.round(p.liq || 0), Math.round(p.vol1h || 0)])});
+  store.set("hot", {at:Date.now(), rows:hotPools().map(p => [p.addr, p.sym, p.v5, p.b5, p.s5, p.pc5, Math.round(p.mcap || 0), Math.round(p.liq || 0), Math.round(p.vol1h || 0), p.mint || ""])});
 }, 3000);
 function loadFeed(markFresh){
   const now = Date.now();
@@ -1395,20 +1447,21 @@ const inBand = m => S.band === "all" || (m > 0 && m >= BANDS[S.band][0] && m < B
 function hotPools(){
   if (!isLeader){
     const h = store.get("hot", null);
-    return h && Date.now() - h.at < 120e3 ? h.rows.map(r => ({addr:r[0], sym:r[1], v5:r[2], b5:r[3], s5:r[4], pc5:r[5], mcap:r[6], liq:r[7], vol1h:r[8]})) : [];
+    return h && Date.now() - h.at < 120e3 ? h.rows.map(r => ({addr:r[0], sym:r[1], v5:r[2], b5:r[3], s5:r[4], pc5:r[5], mcap:r[6], liq:r[7], vol1h:r[8], mint:r[9] || ""})) : [];
   }
   const now = Date.now();
   return [...pools.values()].filter(p => p.pulseAt && now - p.pulseAt < 120e3 && p.v5 > 0).sort((a, b) => b.v5 - a.v5).slice(0, 20);
 }
-function coinRow(p){
-  return '<li class="'+(p.pc5 >= 0 ? "buy" : "sell")+'"><a class="rowlink" href="'+esc(photonUrl(p.addr))+'" target="_blank" rel="noopener" title="Open '+esc(p.sym)+' on Photon"><span class="stripe"></span><div>'+
-    '<div class="line1"><span class="sym">'+esc(p.sym)+'</span><span class="kind">'+pct(p.pc5)+' · 5m</span><span class="muted sm">'+(p.b5 || 0)+' buys · '+(p.s5 || 0)+' sells</span></div>'+
-    '<div class="line2"><span>MC '+(p.mcap ? usd(p.mcap) : "—")+'</span><span>Liq '+usd(p.liq)+'</span><span>1h vol '+usd(p.vol1h)+'</span><span>Photon ↗</span></div></div>'+
+function coinRow(p, seen = seenMap()){
+  return '<li class="'+(p.pc5 >= 0 ? "buy" : "sell")+(p.mint && seen[p.mint] ? " seen" : "")+'"><a class="rowlink" href="'+esc(photonUrl(p.addr))+'" target="_blank" rel="noopener" title="Open '+esc(p.sym)+' on Photon" data-mint="'+esc(p.mint || "")+'" data-sym="'+esc(p.sym)+'"><span class="stripe"></span><div>'+
+    '<div class="line1">'+mintBadge(p.mint)+'<span class="sym">'+esc(p.sym)+'</span><span class="kind">'+pct(p.pc5)+' · 5m</span><span class="muted sm">'+(p.b5 || 0)+' buys · '+(p.s5 || 0)+' sells</span>'+seenTags(p.mint, p.sym, seen)+'</div>'+
+    '<div class="line2">'+(p.mint ? '<span class="addr coin" title="Coin address '+esc(p.mint)+'">coin '+esc(short(p.mint))+'</span>' : '')+'<span>MC '+(p.mcap ? usd(p.mcap) : "—")+'</span><span>Liq '+usd(p.liq)+'</span><span>1h vol '+usd(p.vol1h)+'</span><span>Photon ↗</span></div></div>'+
     '<div><div class="usd">'+usd(p.v5)+'</div><div class="ago">5-min volume</div></div></a></li>';
 }
 function renderHot(){
   const list = hotPools().filter(p => inBand(p.mcap)).slice(0, 8);
-  $("hot-feed").innerHTML = list.length ? list.map(coinRow).join("") : '<li class="empty">Measuring 5-minute volume across all tracked pools…</li>';
+  const seen = seenMap();
+  $("hot-feed").innerHTML = list.length ? list.map(p => coinRow(p, seen)).join("") : '<li class="empty">Measuring 5-minute volume across all tracked pools…</li>';
 }
 function updateSolMeta(){
   const at = isLeader ? lastScanAt : ((store.get("solStatus", null) || {}).lastScanAt || 0);
@@ -1439,8 +1492,9 @@ function renderSol(){
   for (const b of $("sol-views").querySelectorAll("button")) b.setAttribute("aria-selected", String(b.dataset.view === solView));
   $("hot-wrap").hidden = solView !== "big";
   if (solView === "big") renderHot();
+  const seenCoins = seenMap();
   $("sol-feed").innerHTML = list.length
-    ? list.slice(0, V.max).map(t => { const html = solRowHTML({...t, big:t.usd >= S.solTh*10, flash:t.fresh && !t.shown && now - t.seen < 15000, rep:t.kind === "buy" ? reps.get(t.wallet+"|"+t.mint) : 0}); t.shown = true; return html; }).join("")
+    ? list.slice(0, V.max).map(t => { const html = solRowHTML({...t, big:t.usd >= S.solTh*10, flash:t.fresh && !t.shown && now - t.seen < 15000, rep:t.kind === "buy" ? reps.get(t.wallet+"|"+t.mint) : 0}, seenCoins); t.shown = true; return html; }).join("")
     : '<li class="empty">'+esc(solEmpty())+'</li>';
   updateSolMeta();
   const hour = all.filter(t => now - t.t < 36e5), six = all.filter(t => now - t.t < 6*36e5);
@@ -1477,6 +1531,13 @@ $("wallets").addEventListener("click", e => {
   renderSol();
   $("sol-feed").scrollIntoView({behavior:reduce ? "auto" : "smooth", block:"nearest"});
 });
+// Opening a coin marks it viewed: a swap's trade page records it when it opens (and this tab hears
+// about it through the storage event); a hot coin opens straight on Photon, so the click records it.
+$("hot-feed").addEventListener("click", e => {
+  const a = e.target.closest("a[data-mint]"); if (!a || !a.dataset.mint) return;
+  markSeen(a.dataset.mint, a.dataset.sym); setTimeout(renderSol, 50);
+});
+addEventListener("storage", e => { if (e.key === "ws:seen") renderSol(); });
 $("sol-clear").onclick = () => { walletFilter = null; $("sol-filter").hidden = true; renderSol(); };
 addEventListener("keydown", e => { if (e.key === "Escape" && walletFilter) $("sol-clear").click(); });
 function syncChips(){ for (const b of $("mc-chips").querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.band === S.band)); }
@@ -1895,6 +1956,10 @@ $("save").onclick = () => {
 };
 $("sol-th-edit").onclick = e => { e.preventDefault(); $("settings").open = true; $("sol-th").focus(); $("sol-th").select(); };
 $("sol-th").addEventListener("keydown", e => { if (e.key === "Enter") $("save").click(); });
+function seenCount(){ const n = Object.keys(seenMap()).length; $("seen-count").textContent = n ? n+" coin"+(n === 1 ? "" : "s")+" marked viewed" : "None yet"; }
+seenCount();
+$("settings").addEventListener("toggle", seenCount);
+$("seen-clear").onclick = () => { if (!confirm("Clear the list of meme coins you've viewed?")) return; store.del("seen"); seenCount(); renderSol(); };
 $("extra-add").onclick = async () => {
   const m = $("extra").value.trim(); if (!m) return;
   $("extra-msg").textContent = "Looking up…";
