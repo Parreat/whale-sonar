@@ -33,12 +33,16 @@ function loadPage(file){
   pageCache.set(file, v);
   return v;
 }
-// The legal pages name the operator and contact details from the environment.
+// The legal pages carry static defaults in <span data-fill="KEY"> so they read fine on a static host;
+// the server swaps in the operator's details from the environment.
 function fillTemplate(html){
-  const contact = C.contactEmail ? '<a href="mailto:'+esc(C.contactEmail)+'">'+esc(C.contactEmail)+'</a>' : "the email address listed on this site";
-  return html.replaceAll("{{OPERATOR}}", esc(C.operator)).replaceAll("{{CONTACT}}", contact).replaceAll("{{LAW}}", esc(C.governingLaw))
-    .replaceAll("{{ADDRESS_LINE}}", C.postalAddress ? " · "+esc(C.postalAddress) : "")
-    .replaceAll("{{UPDATED}}", new Date(TERMS_VERSION+"T12:00:00Z").toLocaleDateString("en-US", {month:"long", day:"numeric", year:"numeric", timeZone:"UTC"}));
+  const fill = {
+    OPERATOR: C.operatorSet ? esc(C.operator) : null,
+    CONTACT: C.contactEmail ? 'emailing <a href="mailto:'+esc(C.contactEmail)+'">'+esc(C.contactEmail)+'</a>' : null,
+    LAW: C.governingLawSet ? esc(C.governingLaw) : null,
+    ADDRESS_LINE: C.postalAddress ? " · "+esc(C.postalAddress) : null
+  };
+  return html.replace(/<span data-fill="(\w+)">(.*?)<\/span>/g, (m, k, dflt) => fill[k] == null ? dflt : fill[k]);
 }
 function baseHeaders(res){
   res.setHeader("X-Content-Type-Options", "nosniff");
