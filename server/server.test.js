@@ -190,6 +190,7 @@ test("pages carry security headers and a hash-based CSP", async () => {
     const x = await call(p);
     assert.equal(x.status, 200, p);
     assert.ok(!x.text.includes("{{"), p+" has unfilled placeholders");
+    if (p === "/terms.html" || p === "/privacy.html") assert.match(x.text, /123 Test St/, p+" shows the postal address");
   }
   assert.equal((await call("/server/server.js")).status, 404);
   assert.equal((await call("/data/whale-sonar.db")).status, 404);

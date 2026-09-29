@@ -24,6 +24,8 @@ export const C = {
   sendAt: /^\d{1,2}:\d{2}$/.test(env.NEWSLETTER_SEND_AT || "") ? env.NEWSLETTER_SEND_AT : "07:30", // America/New_York
   newsletterOn: env.NEWSLETTER_ENABLED !== "0"
 };
+C.operatorSet = !!env.OPERATOR_NAME;
+C.governingLawSet = !!env.GOVERNING_LAW;
 C.secure = C.baseUrl.startsWith("https://");
 C.origin = new URL(C.baseUrl).origin;
 
