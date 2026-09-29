@@ -1,0 +1,16 @@
+{
+  "name": "whale-sonar",
+  "private": true,
+  "type": "module",
+  "description": "Whale Sonar: whale trades, stock signals and a daily market newsletter",
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server/server.js",
+    "newsletter:preview": "node --disable-warning=ExperimentalWarning server/newsletter.js --preview",
+    "newsletter:send": "node --disable-warning=ExperimentalWarning server/newsletter.js --send",
+    "test": "node --disable-warning=ExperimentalWarning --test server/*.test.js"
+  },
+  "dependencies": {
+    "nodemailer": "^10.0.12"
+  }
+}

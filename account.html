@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Your account · Whale Sonar</title>
+<script>try{var t=JSON.parse(localStorage.getItem("ws:theme"));if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}</script>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/site.css">
+</head>
+<body>
+<div class="page">
+  <div class="top"><a class="brand" href="/"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4v16M12 7v13M19 3v17" stroke="currentColor" stroke-opacity=".35" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="9" width="4" height="6" rx="1" fill="var(--sell)"/><rect x="10" y="11" width="4" height="5" rx="1" fill="var(--buy)"/><rect x="17" y="6" width="4" height="8" rx="1" fill="var(--sonar)"/></svg>Whale Sonar</a><a class="back" href="/">Back to the dashboard</a></div>
+
+  <main class="card" id="card">
+    <section id="v-verify" hidden>
+      <h1>Confirm your email</h1>
+      <p class="muted">One click and your account is ready.</p>
+      <button class="btn primary" id="verify-go" type="button">Confirm my email</button>
+    </section>
+
+    <section id="v-reset" hidden>
+      <h1>Choose a new password</h1>
+      <p class="muted sm">At least 10 characters. A short phrase you'll remember works well. You'll be signed out on your other devices.</p>
+      <form id="reset-form">
+        <label>New password<input type="password" id="reset-pw" autocomplete="new-password" minlength="10" maxlength="200" required></label>
+        <button class="btn primary" type="submit">Save password</button>
+      </form>
+    </section>
+
+    <section id="v-unsubscribe" hidden>
+      <h1>Unsubscribe from Whale Sonar Daily</h1>
+      <p class="muted">You'll stop getting the daily email. Your account stays, and you can resubscribe from the dashboard anytime.</p>
+      <button class="btn primary" id="unsub-go" type="button">Unsubscribe</button>
+    </section>
+
+    <section id="v-done" hidden>
+      <h1 id="done-title">Done</h1>
+      <p id="done-text" class="muted"></p>
+      <a class="btn primary" href="/#account">Go to the dashboard</a>
+    </section>
+
+    <section id="v-bad" hidden>
+      <h1>This link isn't complete</h1>
+      <p class="muted">Try copying the whole link from the email into your browser, or ask for a new one from the dashboard.</p>
+      <a class="btn" href="/#account">Go to the dashboard</a>
+    </section>
+
+    <p class="msg" id="msg" role="status" aria-live="polite"></p>
+  </main>
+
+  <footer><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy</a><a href="/disclaimer.html">Disclaimer</a></footer>
+</div>
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const q = new URLSearchParams(location.search);
+const action = q.get("a"), token = q.get("t") || "";
+// Take the one-time code out of the address bar and history once it's in memory.
+try { history.replaceState(null, "", location.pathname + "?a=" + encodeURIComponent(action || "")); } catch {}
+const show = id => { for (const s of document.querySelectorAll("main section")) s.hidden = s.id !== "v-" + id; };
+const msg = (text, ok) => { $("msg").textContent = text || ""; $("msg").className = "msg " + (ok ? "ok" : "err"); };
+const done = (title, text) => { $("done-title").textContent = title; $("done-text").textContent = text; msg(""); show("done"); };
+async function post(path, body){
+  const r = await fetch(path, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body), credentials:"same-origin"});
+  let data = {}; try { data = await r.json(); } catch {}
+  if (!r.ok) throw new Error(data.error || "Something went wrong. Try again.");
+  return data;
+}
+async function run(btn, fn){
+  btn.disabled = true; msg("");
+  try { await fn(); } catch(e){ msg(e.message); } finally { btn.disabled = false; }
+}
+if (!token || !["verify","reset","unsubscribe"].includes(action)){ show("bad"); return; }
+show(action);
+$("verify-go").onclick = e => run(e.currentTarget, async () => {
+  const r = await post("/api/verify", {t:token});
+  done("You're all set", r.user.newsletter ? "Your email is confirmed and you're signed in. Whale Sonar Daily arrives on weekday mornings." : "Your email is confirmed and you're signed in.");
+});
+$("reset-form").onsubmit = e => { e.preventDefault(); run(e.submitter || $("reset-form").querySelector("button"), async () => {
+  await post("/api/reset", {t:token, password:$("reset-pw").value});
+  done("Password changed", "You're signed in with your new password, and signed out everywhere else.");
+}); };
+$("unsub-go").onclick = e => run(e.currentTarget, async () => {
+  const r = await post("/api/unsubscribe", {t:token});
+  done("Unsubscribed", r.message);
+});
+})();
+</script>
+</body>
+</html>
