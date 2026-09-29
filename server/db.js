@@ -46,6 +46,12 @@ export function openDb(file = path.join(C.dataDir, "whale-sonar.db")){
       created INTEGER NOT NULL,
       sent_at INTEGER
     );
+    CREATE TABLE IF NOT EXISTS ask_usage(
+      day TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      n INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY(day, user_id)
+    );
     CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
     CREATE INDEX IF NOT EXISTS tokens_user ON tokens(user_id);
   `);
@@ -58,4 +64,5 @@ export function sweep(db, now = Date.now()){
   db.prepare("DELETE FROM sessions WHERE expires < ?").run(now);
   db.prepare("DELETE FROM tokens WHERE expires < ?").run(now);
   db.prepare("DELETE FROM users WHERE verified = 0 AND created < ?").run(now - 7*864e5);
+  db.prepare("DELETE FROM ask_usage WHERE day < ?").run(new Date(now - 7*864e5).toISOString().slice(0, 10));
 }

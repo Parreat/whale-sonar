@@ -22,8 +22,15 @@ export const C = {
   contactEmail: env.CONTACT_EMAIL || "",
   governingLaw: env.GOVERNING_LAW || "the state or country where the operator is based",
   sendAt: /^\d{1,2}:\d{2}$/.test(env.NEWSLETTER_SEND_AT || "") ? env.NEWSLETTER_SEND_AT : "07:30", // America/New_York
-  newsletterOn: env.NEWSLETTER_ENABLED !== "0"
+  newsletterOn: env.NEWSLETTER_ENABLED !== "0",
+  // Ask tab: off unless ASK_ENABLED=1 and an Anthropic key is set. It gives personalized answers,
+  // so have a securities lawyer review it before turning it on.
+  anthropicKey: env.ANTHROPIC_API_KEY || "",
+  askModel: env.ASK_MODEL || "claude-opus-5-5",
+  askUserDaily: Math.max(1, +env.ASK_USER_DAILY || 15),
+  askDaily: Math.max(1, +env.ASK_DAILY || 300)
 };
+C.askOn = env.ASK_ENABLED === "1" && !!C.anthropicKey;
 C.operatorSet = !!env.OPERATOR_NAME;
 C.governingLawSet = !!env.GOVERNING_LAW;
 C.secure = C.baseUrl.startsWith("https://");
