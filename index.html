@@ -1420,7 +1420,11 @@ function notifyBuy(t){
 // ---------- Bitquery (optional token): one query covers whale swaps on every Solana coin ----------
 const BQ = "https://streaming.bitquery.io/graphql";
 const BASE_MINTS = ["So11111111111111111111111111111111111111112", "11111111111111111111111111111111", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"];
-const bqMeta = new Map(); // mint -> {mcap, liq, created} from DexScreener
+const bqMeta = new Map(); // mint -> {photon, pool, mcap, liq, created, at} from DexScreener
+// Exchanges Photon trades on: DexScreener dexIds, and Bitquery protocol names for coins DexScreener hasn't listed yet.
+// ponytail: hand-kept lists (Photon publishes none); add a venue here when Photon adds one.
+const PHOTON_DEX = /^(raydium|pumpfun|pumpswap|meteora|orca|launchlab|moonshot)/;
+const PHOTON_PROTO = /pump|raydium|meteora|orca|whirlpool|moonshot|launch/i;
 let bqOff = false, bqFails = 0, bqSince = 0, bqBusy = false;
 const bqOn = () => !!S.bqKey && !bqOff;
 async function bqPoll(){
@@ -1431,13 +1435,13 @@ async function bqPoll(){
     const since = new Date(Math.max(bqSince, Date.now() - 10*60e3) - 30e3).toISOString().slice(0, 19) + "Z";
     const th = JSON.stringify(String(S.solTh)), base = JSON.stringify(BASE_MINTS);
     const side = k => "{Trade: {"+k+": {AmountInUSD: {gt: "+th+"}, Currency: {MintAddress: {notIn: "+base+"}}}}}";
-    const query = '{Solana {DEXTrades(limit: {count: 200}, orderBy: {descending: Block_Time}, where: {Block: {Time: {since: "'+since+'"}}, Transaction: {Result: {Success: true}}, any: ['+side("Buy")+", "+side("Sell")+']}) {Block {Time} Transaction {Signature Signer} Trade {Market {MarketAddress} Buy {Amount AmountInUSD PriceInUSD Currency {Symbol MintAddress}} Sell {Amount AmountInUSD PriceInUSD Currency {Symbol MintAddress}}}}}}';
+    const query = '{Solana {DEXTrades(limit: {count: 200}, orderBy: {descending: Block_Time}, where: {Block: {Time: {since: "'+since+'"}}, Transaction: {Result: {Success: true}}, any: ['+side("Buy")+", "+side("Sell")+']}) {Block {Time} Transaction {Signature Signer} Trade {Market {MarketAddress} Dex {ProtocolName} Buy {Amount AmountInUSD PriceInUSD Currency {Symbol MintAddress}} Sell {Amount AmountInUSD PriceInUSD Currency {Symbol MintAddress}}}}}}';
     const r = await fetch(BQ, {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer "+S.bqKey}, body:JSON.stringify({query})});
     const j = await r.json().catch(() => ({}));
     const rows = j.data && j.data.Solana && j.data.Solana.DEXTrades;
     if (!r.ok || !rows) throw new Error((j.errors && j.errors[0] && j.errors[0].message) || "HTTP "+r.status);
     bqFails = 0;
-    const first = !bqSince, now = Date.now(), need = new Set();
+    const first = !bqSince, now = Date.now(), need = new Set(), cands = [];
     for (const x of rows){
       const b = x.Trade.Buy, sl = x.Trade.Sell, buy = !BASE_MINTS.includes(b.Currency.MintAddress), m = buy ? b : sl;
       const mint = m.Currency.MintAddress, sym = m.Currency.Symbol || "?", t = Date.parse(x.Block.Time);
@@ -1446,27 +1450,33 @@ async function bqPoll(){
       bqSince = Math.max(bqSince, t);
       const id = x.Transaction.Signature+":"+mint+":"+(buy ? "b" : "s");
       if (solTrades.has(id)) continue;
-      const meta = bqMeta.get(mint) || {};
-      if (!bqMeta.has(mint)) need.add(mint);
-      const tr = {id, pool:x.Trade.Market.MarketAddress, sym, mint, t, kind:buy ? "buy" : "sell", usd:+m.AmountInUSD || +(buy ? sl : b).AmountInUSD || 0,
-        wallet:x.Transaction.Signer || "", tx:x.Transaction.Signature, amount:+m.Amount || 0, px:+m.PriceInUSD || 0,
-        mcap:meta.mcap || 0, liq:meta.liq || 0, created:meta.created || 0, fresh:!first, seen:now};
-      solTrades.set(id, tr);
-      if (buy && S.alertTh && tr.usd >= S.alertTh && now - t < 10*60e3) notifyBuy(tr);
+      const meta = bqMeta.get(mint);
+      if (!meta || (!meta.photon && now - meta.at > 120e3)) need.add(mint); // DexScreener may not list a brand-new coin yet
+      cands.push({x, b, sl, buy, m, mint, sym, t, id});
     }
-    renderSolSoon(); updateSolStatus(); lastScanAt = now;
-    // Market cap and liquidity come from DexScreener, 30 tokens per request.
+    // Look up each new coin's Photon-tradable pool (and market cap) on DexScreener, 30 tokens per request.
     const list = [...need];
     for (let i = 0; i < list.length; i += 30){
-      const d = await fetch(DS+"/tokens/v1/solana/"+list.slice(i, i + 30).join(",")).then(x => x.ok ? x.json() : []).catch(() => []);
+      const part = list.slice(i, i + 30), best = new Map();
+      const d = await fetch(DS+"/tokens/v1/solana/"+part.join(",")).then(x => x.ok ? x.json() : []).catch(() => []);
       for (const p of [].concat(d)){
-        const mint = p && p.baseToken && p.baseToken.address, cur = mint && bqMeta.get(mint);
-        if (!mint || (cur && cur.liq >= (+(p.liquidity?.usd) || 0))) continue;
-        bqMeta.set(mint, {mcap:+p.marketCap || +p.fdv || 0, liq:+(p.liquidity?.usd) || 0, created:+p.pairCreatedAt || 0});
+        const mint = p && p.baseToken && p.baseToken.address, liq = +(p.liquidity?.usd) || 0;
+        if (!mint || !PHOTON_DEX.test(p.dexId || "") || (best.get(mint)?.liq || 0) > liq) continue;
+        best.set(mint, {photon:true, pool:p.pairAddress, mcap:+p.marketCap || +p.fdv || 0, liq, created:+p.pairCreatedAt || 0, at:now});
       }
-      for (const m of list.slice(i, i + 30)) if (!bqMeta.has(m)) bqMeta.set(m, {});
+      for (const m of part) bqMeta.set(m, best.get(m) || {photon:false, at:now});
     }
-    if (list.length){ for (const t of solTrades.values()) if (!t.mcap && bqMeta.get(t.mint)?.mcap) Object.assign(t, bqMeta.get(t.mint)); renderSolSoon(); }
+    // Keep only coins Photon trades: a pool on a Photon exchange, or (not on DexScreener yet) a swap on one.
+    for (const c of cands){
+      const meta = bqMeta.get(c.mint) || {};
+      if (!meta.photon && !PHOTON_PROTO.test(c.x.Trade.Dex?.ProtocolName || "")) continue;
+      const tr = {id:c.id, pool:meta.pool || c.x.Trade.Market.MarketAddress, sym:c.sym, mint:c.mint, t:c.t, kind:c.buy ? "buy" : "sell",
+        usd:+c.m.AmountInUSD || +(c.buy ? c.sl : c.b).AmountInUSD || 0, wallet:c.x.Transaction.Signer || "", tx:c.x.Transaction.Signature,
+        amount:+c.m.Amount || 0, px:+c.m.PriceInUSD || 0, mcap:meta.mcap || 0, liq:meta.liq || 0, created:meta.created || 0, fresh:!first, seen:now};
+      solTrades.set(c.id, tr);
+      if (c.buy && S.alertTh && tr.usd >= S.alertTh && now - c.t < 10*60e3) notifyBuy(tr);
+    }
+    renderSolSoon(); updateSolStatus(); lastScanAt = now;
   } catch(e){
     // Three failures in a row (expired token, used-up points) hand the feed back to GeckoTerminal.
     if (++bqFails >= 3){ bqOff = true; $("save-msg").textContent = "Bitquery isn't working ("+e.message+"), so meme scans went back to GeckoTerminal."; updateSolStatus(); }
