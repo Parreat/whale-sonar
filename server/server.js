@@ -9,7 +9,8 @@ import { C, TERMS_VERSION, PRIVACY_VERSION } from "./config.js";
 import { openDb, sweep } from "./db.js";
 import { hashPassword, checkPassword, fakeCheck, newToken, sha256, normEmail, passwordProblem, limited } from "./security.js";
 import { sendMail, accountEmail, esc } from "./mail.js";
-import { renderIssue, startScheduler } from "./newsletter.js";
+import { renderIssue, startScheduler, nyDay } from "./newsletter.js";
+import { createAsk } from "./ask.js";
 
 const SESSION_DAYS = 30;
 const COOKIE = C.secure ? "__Host-ws_sid" : "ws_sid";
@@ -69,7 +70,7 @@ function cookies(req){
 }
 const sessionCookie = (tok, maxAge) => COOKIE+"="+tok+"; Path=/; HttpOnly; SameSite=Lax; Max-Age="+maxAge+(C.secure ? "; Secure" : "");
 
-export function createApp(db, {log = console.log} = {}){
+export function createApp(db, {log = console.log, ask = null, askLimits = {user:C.askUserDaily, all:C.askDaily}} = {}){
   const q = {
     userByEmail: db.prepare("SELECT * FROM users WHERE email = ?"),
     userById: db.prepare("SELECT * FROM users WHERE id = ?"),
@@ -100,6 +101,10 @@ export function createApp(db, {log = console.log} = {}){
     return tok;
   }
   const publicUser = u => ({email:u.email, verified:!!u.verified, newsletter:!!u.newsletter, created:u.created});
+  const askUsed = (day, userId) => (db.prepare("SELECT n FROM ask_usage WHERE day = ? AND user_id = ?").get(day, userId) || {n:0}).n;
+  const askUsedAll = day => db.prepare("SELECT COALESCE(SUM(n), 0) n FROM ask_usage WHERE day = ?").get(day).n;
+  const askInfo = u => ask ? {enabled:true, remaining:u ? Math.max(0, askLimits.user - askUsed(nyDay(), u.id)) : null, limit:askLimits.user} : {enabled:false};
+  const asking = new Set();
   const mailSafe = async m => { try { await sendMail(m); } catch(e){ log("[mail] "+e.message); } };
 
   async function sendVerify(u){
@@ -123,7 +128,7 @@ export function createApp(db, {log = console.log} = {}){
   const routes = {
     "GET /api/me": async ({req, res}) => {
       const u = currentUser(req);
-      json(res, 200, {user:u ? publicUser(u) : null, terms:TERMS_VERSION, privacy:PRIVACY_VERSION});
+      json(res, 200, {user:u ? publicUser(u) : null, terms:TERMS_VERSION, privacy:PRIVACY_VERSION, ask:askInfo(u)});
     },
 
     "POST /api/signup": async ({res, body, ip}) => {
@@ -242,7 +247,8 @@ export function createApp(db, {log = console.log} = {}){
         newsletter_subscribed:!!u.newsletter, newsletter_consent_given:iso(u.newsletter_consent_at), last_newsletter_sent:u.last_issue,
         terms_version_accepted:u.terms_version, privacy_version_accepted:u.privacy_version,
         active_sessions:sessions.map(s => ({signed_in:iso(s.created), expires:iso(s.expires)})),
-        note:"Your password is stored only as a one-way scrypt hash and is not included. Site settings and API keys you enter on the dashboard stay in your browser and are never sent to us."
+        ask_questions_per_day:db.prepare("SELECT day, n AS questions FROM ask_usage WHERE user_id = ? ORDER BY day").all(u.id),
+        note:"Your password is stored only as a one-way scrypt hash and is not included. The text of questions you ask in Ask is never stored, only how many you asked each day. Site settings and API keys you enter on the dashboard stay in your browser and are never sent to us."
       }, {"Content-Disposition":'attachment; filename="whale-sonar-account.json"'});
     },
 
@@ -251,6 +257,7 @@ export function createApp(db, {log = console.log} = {}){
       const u = currentUser(req); if (!u) return fail(res, 401, "Sign in first.");
       if (limited("del:"+u.id, 10, 36e5)) return fail(res, 429, "Too many attempts. Try again later.");
       if (!(await checkPassword(String(body.password || "").slice(0, 200), u.pass))) return fail(res, 403, "That password isn't right.");
+      db.prepare("DELETE FROM ask_usage WHERE user_id = ?").run(u.id);
       db.prepare("DELETE FROM users WHERE id = ?").run(u.id);
       log("[account] deleted user "+u.id);
       json(res, 200, {ok:true}, {"Set-Cookie":sessionCookie("", 0)});
@@ -265,6 +272,30 @@ export function createApp(db, {log = console.log} = {}){
       const r = t && t.length < 100 ? db.prepare("UPDATE users SET newsletter = 0 WHERE unsub = ?").run(t) : {changes:0};
       if (!r.changes && !db.prepare("SELECT 1 FROM users WHERE unsub = ?").get(t)) return fail(res, 400, "We couldn't find that subscription. It may belong to a deleted account, which means you're already off the list.");
       json(res, 200, {ok:true, message:"You're unsubscribed from Whale Sonar Daily. You won't get another issue."});
+    },
+
+    // Ask tab. Question text goes to the model and back; only a per-day count is stored.
+    "POST /api/ask": async ({req, res, body}) => {
+      if (!ask) return fail(res, 404, "Ask isn't turned on for this site.");
+      const u = currentUser(req); if (!u) return fail(res, 401, "Sign in to use Ask.");
+      if (body.ack !== true) return fail(res, 400, "Please confirm you understand answers are AI-generated and not from a licensed adviser.");
+      const question = typeof body.question === "string" ? body.question.trim() : "";
+      if (question.length < 3) return fail(res, 400, "Type a question first.");
+      if (question.length > 2000) return fail(res, 400, "Keep questions under 2,000 characters.");
+      const day = nyDay();
+      if (askUsed(day, u.id) >= askLimits.user) return fail(res, 429, "You've used all "+askLimits.user+" questions for today. They reset at midnight New York time.");
+      if (askUsedAll(day) >= askLimits.all) return fail(res, 429, "Ask has hit its limit for today. Try again tomorrow.");
+      if (asking.has(u.id)) return fail(res, 429, "Wait for your current question to finish.");
+      asking.add(u.id);
+      try {
+        db.prepare("INSERT INTO ask_usage(day, user_id, n) VALUES(?, ?, 1) ON CONFLICT(day, user_id) DO UPDATE SET n = n + 1").run(day, u.id);
+        const r = await ask({question, profile:body.profile && typeof body.profile === "object" ? body.profile : {}, history:body.history});
+        json(res, 200, {answer:r.answer, tickers:r.tickers, remaining:Math.max(0, askLimits.user - askUsed(day, u.id))});
+      } catch(e){
+        log("[ask] "+(e.status ? "API "+e.status+": " : "")+e.message);
+        db.prepare("UPDATE ask_usage SET n = MAX(0, n - 1) WHERE day = ? AND user_id = ?").run(day, u.id); // failed questions don't count
+        fail(res, 503, "The AI service didn't answer. Please try again in a minute.");
+      } finally { asking.delete(u.id); }
     },
 
     "GET /api/issues": async ({res}) => {
@@ -348,12 +379,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href){
   const db = openDb();
   sweep(db);
   setInterval(() => sweep(db), 36e5).unref();
-  const server = http.createServer(createApp(db));
+  const ask = C.askOn ? createAsk({db, finnhubKey:C.finnhubKey, apiKey:C.anthropicKey, model:C.askModel}) : null;
+  const server = http.createServer(createApp(db, {ask}));
   server.headersTimeout = 15e3; server.requestTimeout = 30e3;
   server.listen(C.port, C.host, () => {
     console.log("Whale Sonar on "+C.baseUrl+" (listening on "+C.host+":"+C.port+")");
     if (!C.smtpUrl) console.log("SMTP_URL isn't set: emails are written to "+path.join(C.dataDir, "outbox")+" instead of being sent.");
     if (!C.finnhubKey) console.log("FINNHUB_KEY isn't set: the daily newsletter is off.");
+    console.log(C.askOn ? "Ask tab is ON (model "+C.askModel+", "+C.askUserDaily+" questions per user per day, "+C.askDaily+" site-wide)." : "Ask tab is off (set ASK_ENABLED=1 and ANTHROPIC_API_KEY to turn it on).");
     if (!C.contactEmail) console.log("CONTACT_EMAIL isn't set: the Terms and Privacy Policy have no contact address to show.");
     if (!C.postalAddress) console.log("POSTAL_ADDRESS isn't set: newsletters won't send until it is (CAN-SPAM).");
   });

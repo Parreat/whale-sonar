@@ -24,6 +24,19 @@ To preview a newsletter with real data (takes about 3 minutes on Finnhub's free 
 FINNHUB_KEY=your_key npm run newsletter:preview   # writes data/preview.html
 ```
 
+## The Ask tab
+
+Signed-in users can ask questions about stocks, budgets and investing plans. The answers come from Claude (`claude-opus-5-5` by default) and use real data. For each ticker the answer covers, the server looks up Finnhub data: price, analyst ratings, key metrics, headlines and insider trades, plus the site's signal score. It also reads the latest daily screen. Users can add optional "About you" details (amount, time horizon, risk tolerance, experience, emergency fund) to tailor the answers.
+
+- **Off by default.** The tab appears only when `ASK_ENABLED=1` and `ANTHROPIC_API_KEY` are set. It needs the server, so it never appears on GitHub Pages.
+- **Cost:** each question makes 2 to 4 calls to the model. At Opus 5.5 prices ($4 in / $20 out per million tokens), that's roughly 5 to 15 cents a question. `ASK_USER_DAILY` (default 15) and `ASK_DAILY` (default 300) cap the spend, so the default worst case is about $30–45 a day. `ASK_MODEL=claude-sonnet-5-5` roughly halves the cost.
+- **Privacy:** question text, profile details and answers are never stored. Only a per-user daily count is kept, and it's deleted after 7 days.
+- **Safeguards:**
+  - Users must be signed in (18+, Terms accepted) and tick an acknowledgment that the answers are AI-generated and not from a licensed adviser.
+  - The system prompt matches ideas to the person's risk and puts an emergency fund and paying off debt first. It lists the risks of each idea, never promises returns, and discourages leverage, margin, options and gambling-like behavior.
+  - Market data and headlines are treated as data, not instructions.
+- **Legal risk:** unlike the rest of the site, Ask gives *personalized* answers. In the U.S., personalized investment advice given for compensation, which can include ad revenue or a paid plan, generally requires registering as an investment adviser. The Terms, Privacy Policy and Disclaimer cover Ask, but have a securities lawyer review it before you turn it on.
+
 ## Deploy
 
 1. Run `npm start` on any host that runs Node (a VPS, Fly.io, Render, Railway…), behind HTTPS. `BASE_URL` must be the public `https://` address; that turns on secure cookies and HSTS.
@@ -60,5 +73,5 @@ The server keeps rate limits in memory, so run a single process.
 - Set `OPERATOR_NAME`, `CONTACT_EMAIL`, `GOVERNING_LAW` and `POSTAL_ADDRESS`.
 - **Check your data licenses.** Finnhub's free plan is for personal use. Emailing its news and data to subscribers is redistribution, which usually needs a commercial plan.
 - Keep the promise in the disclaimer: don't trade tickers ahead of an issue going out.
-- If you ever charge for the newsletter, personalize picks, or take payment to feature a stock or token, the legal picture changes a lot. Talk to a securities lawyer first.
+- If you ever charge for the newsletter, turn on the Ask tab, or take payment to feature a stock or token, the legal picture changes a lot. Talk to a securities lawyer first.
 - Sign a data processing agreement with your email and hosting providers if you have EU or UK subscribers.

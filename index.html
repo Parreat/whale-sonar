@@ -227,6 +227,40 @@ details.settings summary{padding:14px 16px;cursor:pointer;font-weight:600}
 .arow .acts{display:flex;gap:10px;align-items:center;font-size:12px}
 .copy{font-size:12px;padding:3px 9px}
 
+/* ask */
+.askwrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start}
+.thread{list-style:none;margin:0;padding:8px 16px;display:grid;gap:14px;max-height:min(70vh,760px);overflow-y:auto}
+.thread>li{border-radius:10px;padding:12px 14px;min-width:0}
+.thread .hello{background:var(--surface-2);border:1px dashed var(--line)}
+.thread .hello p{margin:0 0 10px}
+.askchips{padding:0;border:0}
+.askchips .chipbtn{text-align:left}
+.thread .q{background:var(--sonar-dim);justify-self:end;max-width:85%;white-space:pre-wrap;overflow-wrap:anywhere}
+.thread .a{background:var(--surface-2);border:1px solid var(--line);max-width:100%;overflow-wrap:anywhere}
+.thread .a p{margin:0 0 10px}
+.thread .a p:last-child{margin-bottom:0}
+.thread .a ul,.thread .a ol{margin:0 0 10px;padding-left:22px}
+.thread .a li{margin-bottom:4px}
+.thread .a h3{margin:14px 0 6px;color:var(--text);font:600 14px/1.3 var(--body);text-transform:none;letter-spacing:0}
+.thread .a code{font:12px var(--mono);background:var(--surface);padding:1px 4px;border-radius:3px}
+.thread .a .tickers{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:12px;color:var(--muted);align-items:center}
+.thread .a .tickers a{font:600 12px var(--mono);text-decoration:none;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--text)}
+.thread .a .tickers a:hover{border-color:var(--sonar);color:var(--sonar)}
+.thread .wait{color:var(--muted);background:none;border:1px dashed var(--line)}
+.thread .wait::after{content:"";display:inline-block;width:1.2em;text-align:left;animation:dots 1.2s steps(4,end) infinite}
+@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+.askform{display:grid;gap:10px;padding:12px 16px 16px;border-top:1px solid var(--line)}
+.askform textarea{font:inherit;color:inherit;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;resize:vertical;min-height:72px;width:100%}
+.askack{margin:0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.profile{display:grid;gap:12px;padding:14px 16px 16px}
+.profile>label{display:grid;gap:6px;font-size:12px;color:var(--muted)}
+.profile select,.profile input[type=number]{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:6px 10px;color:var(--text);font:inherit;min-width:0}
+.profile .inline{display:flex;gap:6px;align-items:center;font-size:12px;white-space:nowrap}
+.askfine{border:0;padding:12px 0 0}
+@media (max-width:980px){ .askwrap{grid-template-columns:1fr} .thread{max-height:none} }
+@media (prefers-reduced-motion: reduce){ .thread .wait::after{animation:none;content:"..."} }
+
 /* account, newsletter and footer */
 .hbtns{display:flex;gap:8px;align-items:center}
 .iconbtn{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;width:32px;height:32px;display:inline-grid;place-items:center;cursor:pointer;color:var(--muted)}
@@ -246,6 +280,7 @@ dialog.acct::backdrop{background:rgba(3,8,12,.65);backdrop-filter:blur(2px)}
 .dbody form{display:grid;gap:12px}
 .dbody label{display:grid;gap:6px;font-size:12px;color:var(--muted)}
 .dbody input[type=email],.dbody input[type=password]{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:9px 11px;font-size:14px;width:100%}
+.check[hidden]{display:none!important}
 .check{display:grid!important;grid-template-columns:18px 1fr;gap:10px!important;align-items:start;font-size:13px!important;color:var(--text)!important;line-height:1.45}
 .check input{width:16px;height:16px;margin:2px 0 0;accent-color:var(--sonar)}
 .dbody .btn.primary{padding:9px 14px}
@@ -325,6 +360,7 @@ details.more form{margin-top:12px}
   <button class="mtab" role="tab" type="button" id="mt-stocks" data-tab="stocks" aria-controls="p-stocks" aria-selected="false">Stock whales <span class="badge" id="b-stocks"></span></button>
   <button class="mtab" role="tab" type="button" id="mt-signals" data-tab="signals" aria-controls="p-signals" aria-selected="false">Stock signals <span class="badge" id="b-signals"></span></button>
   <button class="mtab" role="tab" type="button" id="mt-news" data-tab="news" aria-controls="p-news" aria-selected="false">News</button>
+  <button class="mtab" role="tab" type="button" id="mt-ask" data-tab="ask" aria-controls="p-ask" aria-selected="false" hidden>Ask <span class="badge">AI</span></button>
 </nav>
 
 <section class="tabpanel" id="p-memes" role="tabpanel" aria-labelledby="mt-memes">
@@ -437,6 +473,50 @@ details.more form{margin-top:12px}
       <p class="fine">Each score runs from −100 to +100 and blends five inputs: analyst ratings (30%), the tone of the last 3 days of headlines (25%), today's block prints (25%), insider buying and selling over 30 days (10%) and today's price move (10%). Headline tone comes from simple keyword matching, so treat it as rough. Click a row to see what drove its score, or a ticker to open it on Robinhood. This is an automated screen of public data, not financial advice.</p>
     </div>
   </div>
+</section>
+
+<section class="tabpanel" id="p-ask" role="tabpanel" aria-labelledby="mt-ask" hidden>
+  <div class="askwrap">
+    <div class="panel askmain">
+      <div class="panel-head"><span class="chip">ASK</span><h2>Ask about stocks, budgets and plans</h2><span class="meta" id="ask-meta"></span></div>
+      <div class="setup" id="ask-signin" hidden>
+        <strong>Sign in to use Ask</strong>
+        <span class="muted">Ask is free with a Whale Sonar account. You get a set number of questions each day.</span>
+        <div><button class="btn primary" id="ask-signin-btn" type="button">Sign in or create an account</button></div>
+      </div>
+      <div id="ask-body" hidden>
+        <ol class="thread" id="ask-thread" aria-live="polite">
+          <li class="hello"><p>Ask anything about a stock, an ETF, a budget or an investing plan. Answers use live market data and Whale Sonar's signal screen. Try one of these:</p>
+            <div class="chips askchips" id="ask-examples">
+              <button class="chipbtn" type="button">Is NVDA a good buy right now?</button>
+              <button class="chipbtn" type="button">I can invest $300 a month for 10 years. Where should I start?</button>
+              <button class="chipbtn" type="button">Compare AMD and INTC</button>
+              <button class="chipbtn" type="button">What looks strongest in the market today?</button>
+            </div>
+          </li>
+        </ol>
+        <form class="askform" id="ask-form" novalidate>
+          <label class="sr" for="ask-q">Your question</label>
+          <textarea id="ask-q" rows="3" maxlength="2000" placeholder="e.g. I have $2,000 and a 5-year horizon. Should I buy TSLA, an index fund, or both?"></textarea>
+          <label class="check askack" id="ask-ack-row"><input type="checkbox" id="ask-ack"><span>I understand answers are generated by AI from public data, can be wrong, and aren't advice from a licensed financial adviser. I make my own decisions. (<a href="disclaimer.html" target="_blank">disclaimer</a>)</span></label>
+          <div class="row"><button class="btn primary" type="submit" id="ask-go">Ask</button><button class="btn" type="button" id="ask-clear">New conversation</button><span class="muted sm" id="ask-left"></span></div>
+          <p class="dmsg" id="ask-msg" role="status"></p>
+        </form>
+      </div>
+    </div>
+    <aside class="panel askside" id="ask-profile-panel">
+      <div class="panel-head"><h2>About you <span class="muted sm">(optional)</span></h2></div>
+      <form class="profile" id="ask-profile">
+        <p class="muted sm" style="margin:0">Helps tailor answers. Saved only in this browser and sent with each question.</p>
+        <label>Amount to invest (USD)<span class="row"><input type="number" name="budget" min="0" step="any" placeholder="e.g. 2000"><label class="inline"><input type="checkbox" name="monthly"> per month</label></span></label>
+        <label>Time horizon<select name="horizon"><option value="">Not set</option><option value="<1">Under 1 year</option><option value="1-3">1 to 3 years</option><option value="3-10">3 to 10 years</option><option value="10+">More than 10 years</option></select></label>
+        <label>Risk tolerance<select name="risk"><option value="">Not set</option><option value="low">Low: I hate big drops</option><option value="medium">Medium</option><option value="high">High: big swings are fine</option></select></label>
+        <label>Experience<select name="experience"><option value="">Not set</option><option value="new">New to investing</option><option value="some">Some experience</option><option value="experienced">Experienced</option></select></label>
+        <label>Emergency fund (3 to 6 months of costs)<select name="efund"><option value="">Not set</option><option value="yes">Yes</option><option value="no">Not yet</option><option value="unsure">Not sure</option></select></label>
+      </form>
+    </aside>
+  </div>
+  <p class="fine askfine">Ask sends your question and the details above to Anthropic's Claude to write an answer, looking up prices, analyst ratings, news and insider trades from Finnhub. We don't store what you ask. Answers are automated, can be wrong or out of date, and aren't reviewed by a person or a licensed adviser. Investing can lose money, and crypto and meme coins can go to zero.</p>
 </section>
 
 <section class="promo" id="promo" hidden aria-labelledby="promo-h">
@@ -746,6 +826,7 @@ $("yr").textContent = new Date().getFullYear();
 
 // ---------- accounts and the newsletter (only when the Whale Sonar server is running) ----------
 const wantAccount = location.hash === "#account";
+const wantAsk = location.hash === "#ask" || (!location.hash && store.get("tab", "") === "ask");
 const acct = {user:null, view:"signup"};
 async function api(path, body){
   const r = await fetch(path, body === undefined ? {credentials:"same-origin"} : {method:"POST", credentials:"same-origin", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
@@ -776,6 +857,7 @@ function syncAcct(){
   $("acct-btn").title = u ? "Your account" : "Sign in or create an account";
   $("promo").hidden = !!(u && u.newsletter);
   if (acct.view === "account" && !u) acctView("login");
+  syncAsk();
 }
 async function loadIssues(){
   try {
@@ -845,7 +927,97 @@ $("promo-go").onclick = () => {
   if (acct.user){ openAcct("account"); $("me-news").focus(); return; }
   openAcct("signup"); $("f-signup").newsletter.checked = true;
 };
+// ---------- Ask: questions answered by the server's AI, grounded in market data ----------
+const askState = {on:false, left:null, limit:null, conv:[], busy:false};
+// A small, safe Markdown subset: everything is escaped first, then bold, code, links, lists and headings.
+function mdInline(t){
+  return esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (m, a, u) => '<a href="'+u+'" target="_blank" rel="noopener nofollow">'+a+'</a>');
+}
+function md(src){
+  const out = []; let list = null, para = [];
+  const flushP = () => { if (para.length){ out.push("<p>"+mdInline(para.join(" "))+"</p>"); para = []; } };
+  const flushL = () => { if (list){ out.push("<"+list.tag+">"+list.items.map(i => "<li>"+mdInline(i)+"</li>").join("")+"</"+list.tag+">"); list = null; } };
+  for (const raw of String(src).split("\n")){
+    const line = raw.trim();
+    let m;
+    if (!line){ flushP(); flushL(); continue; }
+    if ((m = line.match(/^#{1,6}\s+(.*)$/))){ flushP(); flushL(); out.push("<h3>"+mdInline(m[1])+"</h3>"); continue; }
+    if ((m = line.match(/^[-*•]\s+(.*)$/)) || (m = line.match(/^\d+[.)]\s+(.*)$/))){
+      flushP();
+      const tag = /^\d/.test(line) ? "ol" : "ul";
+      if (!list || list.tag !== tag){ flushL(); list = {tag, items:[]}; }
+      list.items.push(m[1]); continue;
+    }
+    if (/^(-{3,}|\*{3,})$/.test(line)){ flushP(); flushL(); continue; }
+    flushL(); para.push(line);
+  }
+  flushP(); flushL();
+  return out.join("");
+}
+function syncAsk(){
+  if (!askState.on) return;
+  const signedIn = !!acct.user;
+  $("ask-signin").hidden = signedIn; $("ask-body").hidden = !signedIn;
+  $("ask-meta").textContent = signedIn && askState.left != null ? askState.left+" of "+askState.limit+" questions left today" : "";
+  $("ask-left").textContent = "";
+  $("ask-ack-row").hidden = !!store.get("askAck", false);
+  $("ask-ack").checked = !!store.get("askAck", false);
+}
+function askProfile(){
+  const f = $("ask-profile"), d = Object.fromEntries(new FormData(f));
+  return {budget:d.budget ? +d.budget : null, monthly:f.monthly.checked, horizon:d.horizon || "", risk:d.risk || "", experience:d.experience || "", efund:d.efund || ""};
+}
+(function loadProfile(){
+  const p = store.get("askProfile", null), f = $("ask-profile");
+  if (p){ for (const k of ["budget","horizon","risk","experience","efund"]) if (p[k] != null && f[k]) f[k].value = p[k]; f.monthly.checked = !!p.monthly; }
+  f.addEventListener("change", () => store.set("askProfile", askProfile()));
+  f.addEventListener("submit", e => e.preventDefault());
+})();
+function askBubble(cls, html){
+  const li = document.createElement("li"); li.className = cls; li.innerHTML = html;
+  $("ask-thread").appendChild(li); li.scrollIntoView({block:"nearest", behavior:"smooth"});
+  return li;
+}
+async function sendAsk(q){
+  if (askState.busy) return;
+  const msg = $("ask-msg"); msg.textContent = ""; msg.className = "dmsg";
+  q = q.trim();
+  if (q.length < 3){ msg.className = "dmsg err"; msg.textContent = "Type a question first."; return; }
+  if (!$("ask-ack").checked){ msg.className = "dmsg err"; msg.textContent = "Please tick the box to confirm you understand these are AI answers, not licensed advice."; $("ask-ack").focus(); return; }
+  store.set("askAck", true); $("ask-ack-row").hidden = true;
+  askState.busy = true; $("ask-go").disabled = true;
+  const hello = $("ask-thread").querySelector(".hello"); if (hello) hello.remove();
+  askBubble("q", esc(q));
+  const wait = askBubble("a wait", "Looking up data and thinking");
+  $("ask-q").value = "";
+  try {
+    const r = await api("/api/ask", {question:q, profile:askProfile(), history:askState.conv.slice(-4), ack:true});
+    askState.conv.push({q, a:r.answer});
+    askState.left = r.remaining;
+    wait.className = "a";
+    wait.innerHTML = md(r.answer) + (r.tickers && r.tickers.length ? '<div class="tickers">Looked up:'+r.tickers.map(t => '<a href="'+rh(t)+'" target="_blank" rel="noopener" title="Open '+esc(t)+' on Robinhood">'+esc(t)+'</a>').join("")+'</div>' : "");
+  } catch(err){
+    wait.remove();
+    msg.className = "dmsg err"; msg.textContent = err.message;
+    $("ask-q").value = q;
+    if (/sign in/i.test(err.message)){ acct.user = null; syncAcct(); }
+  } finally {
+    askState.busy = false; $("ask-go").disabled = false; syncAsk();
+  }
+}
+$("ask-form").addEventListener("submit", e => { e.preventDefault(); sendAsk($("ask-q").value); });
+$("ask-q").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendAsk($("ask-q").value); } });
+$("ask-examples").addEventListener("click", e => { const b = e.target.closest("button"); if (b){ $("ask-q").value = b.textContent; $("ask-q").focus(); } });
+$("ask-clear").onclick = () => {
+  askState.conv = [];
+  $("ask-thread").innerHTML = '<li class="hello"><p>New conversation. What would you like to know?</p></li>';
+  $("ask-msg").textContent = ""; $("ask-q").focus();
+};
+$("ask-signin-btn").onclick = () => openAcct("login");
 api("/api/me").then(r => {
+  askState.on = !!(r.ask && r.ask.enabled);
+  if (askState.on){ askState.left = r.ask.remaining; askState.limit = r.ask.limit; $("mt-ask").hidden = false; if (wantAsk) showTab("ask"); }
   acct.user = r.user; syncAcct(); loadIssues();
   $("promo").hidden = !!(r.user && r.user.newsletter);
   if (wantAccount) openAcct();
@@ -904,10 +1076,11 @@ const renderStocksSoon = debounce(renderStocks, 500);
 const renderSignalsSoon = debounce(renderSignals, 600);
 
 // ---------- tabs ----------
-const TABS = ["memes","stocks","signals","news"];
+const TABS = ["memes","stocks","signals","news","ask"];
 let tab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : store.get("tab", "memes");
 if (!TABS.includes(tab)) tab = "memes";
 function showTab(t){
+  if (t === "ask" && $("mt-ask").hidden) t = "memes"; // Ask appears only when the server has it turned on
   tab = t; store.set("tab", t);
   for (const b of document.querySelectorAll(".mtab")){ const on = b.dataset.tab === t; b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; }
   for (const id of TABS) $("p-"+id).hidden = id !== t;
@@ -920,7 +1093,8 @@ function showTab(t){
 $("maintabs").addEventListener("click", e => { const b = e.target.closest(".mtab"); if (b) showTab(b.dataset.tab); });
 $("maintabs").addEventListener("keydown", e => {
   if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-  const next = TABS[(TABS.indexOf(tab) + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length];
+  const vis = TABS.filter(t => !$("mt-"+t).hidden);
+  const next = vis[(vis.indexOf(tab) + (e.key === "ArrowRight" ? 1 : vis.length - 1)) % vis.length];
   showTab(next); $("mt-"+next).focus();
 });
 addEventListener("hashchange", () => { const h = location.hash.slice(1); if (TABS.includes(h) && h !== tab) showTab(h); });
