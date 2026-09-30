@@ -1409,7 +1409,7 @@ function pickPool(){
 }
 async function scanLoop(){
   if (!isLeader){ scanning = false; return; }
-  if (bqOn()){ setTimeout(scanLoop, 5000); return; } // Bitquery covers every coin; scanning too would list each swap twice
+  if (bqFeeding()){ setTimeout(scanLoop, 5000); return; } // Bitquery covers every coin; scanning too would list each swap twice
   scanning = true;
   const pool = pickPool();
   if (!pool){ setTimeout(scanLoop, 1500); return; }
@@ -1456,7 +1456,9 @@ const BQ = "https://streaming.bitquery.io/graphql";
 const BASE_MINTS = ["So11111111111111111111111111111111111111112", "11111111111111111111111111111111", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"];
 const bqMeta = new Map(); // mint -> {photon, pool, mcap, liq, created, at} from DexScreener
 let bqOff = false, bqFails = 0, bqSince = 0, bqBusy = false, bqWs = null, bqLive = false, bqRetry = 0, bqNextTry = 0;
-const bqOn = () => !!S.bqKey && !bqOff;
+// bqOff stops only the 10s checks (points used up, bad token); the stream keeps retrying, since streaming minutes are billed separately.
+const bqOn = () => !!S.bqKey;
+const bqFeeding = () => bqOn() && (bqLive || !bqOff); // Bitquery is supplying the swaps, so GeckoTerminal scans pause
 // Swaps over the whale size on either side, not counting SOL/USDC/USDT legs. The stream uses the same filter, live.
 function bqQuery(live){
   const th = JSON.stringify(String(S.solTh)), base = JSON.stringify(BASE_MINTS);
@@ -1469,7 +1471,7 @@ function bqQuery(live){
   return '{Solana {DEXTrades(limit: {count: 200}, orderBy: {descending: Block_Time}, where: {Block: {Time: {since: "'+since+'"}}, '+where+'}) '+fields+'}}';
 }
 async function bqPoll(){
-  if (!bqOn() || !isLeader || bqBusy || bqLive || tab !== "memes") return; // the stream already delivers each swap
+  if (!bqOn() || bqOff || !isLeader || bqBusy || bqLive || tab !== "memes") return; // the stream already delivers each swap
   bqBusy = true;
   try {
     const r = await fetch(BQ, {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer "+S.bqKey}, body:JSON.stringify({query:bqQuery(false)})});
@@ -1480,7 +1482,7 @@ async function bqPoll(){
     await bqIngest(rows);
   } catch(e){
     // Three failures in a row (expired token, used-up points) hand the feed back to GeckoTerminal.
-    if (++bqFails >= 3){ bqOff = true; $("save-msg").textContent = "Bitquery isn't working ("+e.message+"), so meme scans went back to GeckoTerminal."; updateSolStatus(); }
+    if (++bqFails >= 3){ bqOff = true; $("save-msg").textContent = "Bitquery's 10-second checks stopped ("+e.message+"). Meme scans use GeckoTerminal unless the Bitquery live stream connects."; updateSolStatus(); }
   } finally { bqBusy = false; }
 }
 // Live stream (Bitquery plans with streaming): each swap arrives as it happens; while it's up, the 10s checks pause.
@@ -1547,7 +1549,7 @@ function updateSolStatus(){
   $("t-pools").textContent = n;
   $("t-pools-s").textContent = !n ? "finding pools…" : done < n ? done+" scanned so far" : "busiest checked most often";
   if (bqOn() && tab !== "memes") setStatus("st-sol", "", "Solana: Bitquery paused until you open Meme coins");
-  else if (bqOn()) setStatus("st-sol", "live", bqLive ? "Solana: streaming live via Bitquery · every coin" : "Solana: live via Bitquery · every coin, checked every 10s");
+  else if (bqFeeding()) setStatus("st-sol", "live", bqLive ? "Solana: streaming live via Bitquery · every coin" : "Solana: live via Bitquery · every coin, checked every 10s");
   else if (!gtLimited) setStatus("st-sol", "live", !n ? "Solana: finding pools" : done < n ? "Solana: first pass "+done+"/"+n : "Solana: live · "+n+" pools");
 }
 const saveFeedSoon = debounce(() => {
