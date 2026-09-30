@@ -1140,6 +1140,8 @@ function showTab(t){
   for (const id of TABS) $("p-"+id).hidden = id !== t;
   if (location.hash !== "#"+t){ try { history.replaceState(null, "", "#"+t); } catch {} }
   if (t === "memes") renderSol();
+  // Bitquery bills streaming minutes and query points, so it only runs while the Meme coins tab is open.
+  if (t === "memes"){ bqStream(); bqPoll(); } else { bqStopStream(); updateSolStatus(); }
   if (t === "stocks") renderStocks();
   if (t === "signals") renderSignals();
   if (t === "news") renderNews();
@@ -1441,7 +1443,7 @@ function bqQuery(live){
   return '{Solana {DEXTrades(limit: {count: 200}, orderBy: {descending: Block_Time}, where: {Block: {Time: {since: "'+since+'"}}, '+where+'}) '+fields+'}}';
 }
 async function bqPoll(){
-  if (!bqOn() || !isLeader || bqBusy || bqLive) return; // the stream already delivers each swap
+  if (!bqOn() || !isLeader || bqBusy || bqLive || tab !== "memes") return; // the stream already delivers each swap
   bqBusy = true;
   try {
     const r = await fetch(BQ, {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer "+S.bqKey}, body:JSON.stringify({query:bqQuery(false)})});
@@ -1458,7 +1460,7 @@ async function bqPoll(){
 // Live stream (Bitquery plans with streaming): each swap arrives as it happens; while it's up, the 10s checks pause.
 // It reconnects with backoff, and the 10s checks cover any gap (they start from the newest swap seen).
 function bqStream(){
-  if (!bqOn() || !isLeader || bqWs || Date.now() < bqNextTry || !("WebSocket" in window)) return;
+  if (!bqOn() || !isLeader || bqWs || tab !== "memes" || Date.now() < bqNextTry || !("WebSocket" in window)) return;
   const sock = new WebSocket("wss://streaming.bitquery.io/graphql?token="+encodeURIComponent(S.bqKey), "graphql-ws");
   bqWs = sock;
   sock.onopen = () => sock.send(JSON.stringify({type:"connection_init", payload:{}}));
@@ -1518,7 +1520,8 @@ function updateSolStatus(){
   const n = pools.size, done = scanProgress();
   $("t-pools").textContent = n;
   $("t-pools-s").textContent = !n ? "finding pools…" : done < n ? done+" scanned so far" : "busiest checked most often";
-  if (bqOn()) setStatus("st-sol", "live", bqLive ? "Solana: streaming live via Bitquery · every coin" : "Solana: live via Bitquery · every coin, checked every 10s");
+  if (bqOn() && tab !== "memes") setStatus("st-sol", "", "Solana: Bitquery paused until you open Meme coins");
+  else if (bqOn()) setStatus("st-sol", "live", bqLive ? "Solana: streaming live via Bitquery · every coin" : "Solana: live via Bitquery · every coin, checked every 10s");
   else if (!gtLimited) setStatus("st-sol", "live", !n ? "Solana: finding pools" : done < n ? "Solana: first pass "+done+"/"+n : "Solana: live · "+n+" pools");
 }
 const saveFeedSoon = debounce(() => {
