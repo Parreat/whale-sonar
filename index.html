@@ -164,6 +164,18 @@ h3{font:600 12px var(--body);text-transform:uppercase;letter-spacing:.08em;color
 .setup{padding:20px 16px;display:flex;flex-direction:column;gap:10px;font-size:13px}
 .setup ol{margin:0;padding-left:20px;color:var(--muted)}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.calc select{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+.calc .sgrid{padding:14px 16px}
+.calc-wrap{overflow-x:auto}
+.calc-t{width:100%;border-collapse:collapse;font-size:13px}
+.calc-t th,.calc-t td{padding:8px 16px;border-top:1px solid var(--line);text-align:right;white-space:nowrap}
+.calc-t th{font-weight:600;color:var(--muted);font-size:12px}
+.calc-t th:first-child,.calc-t td:first-child{text-align:left}
+.calc-t td{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.calc-t td.bar-cell{width:30%;min-width:80px}
+.calc-bar{height:8px;border-radius:4px;background:var(--sell)}
+.calc-note{padding:0 16px 10px;margin:0;font-size:13px}
+@media (max-width:640px){ .calc-t th,.calc-t td{padding:8px 10px} .calc-t .bar-cell{display:none} }
 input[type=text],input[type=password],input[type=number]{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:6px 10px;min-width:0;flex:1}
 
 /* signals */
@@ -382,6 +394,7 @@ details.more form{margin-top:12px}
           <button class="subtab" type="button" role="tab" data-view="buys">New buys</button>
           <button class="subtab" type="button" role="tab" data-view="big">Biggest volume</button>
           <button class="subtab" type="button" role="tab" data-view="all">All swaps</button>
+          <button class="subtab" type="button" role="tab" data-view="calc">Break-even</button>
         </div>
         <span class="meta" id="sol-meta"></span><a class="sm" href="#settings" id="sol-th-edit">change size</a>
       </div>
@@ -399,6 +412,19 @@ details.more form{margin-top:12px}
         <h3 class="subhead">Largest whale swaps · last 6 hours</h3>
       </div>
       <ul class="feed" id="sol-feed"><li class="empty">Finding high-volume meme pools…</li></ul>
+      <div class="calc" id="calc" hidden>
+        <div class="sgrid">
+          <label for="c-cap">Capital (USD)<input type="number" id="c-cap" min="1" step="any"></label>
+          <label for="c-size">Trade size (USD)<input type="number" id="c-size" min="1" step="any"></label>
+          <label for="c-plan">Data plan<select id="c-plan"><option value="0">Free (CoinGecko Demo)</option><option value="35">CoinGecko Basic · $35/mo</option><option value="39">Bitquery Personal · $39/mo</option><option value="79">Bitquery Pro · $79/mo</option></select></label>
+          <label for="c-photon">Photon fee (% each way)<input type="number" id="c-photon" min="0" step="any"></label>
+          <label for="c-pool">Pool fee (% each way)<input type="number" id="c-pool" min="0" step="any"></label>
+          <label for="c-slip">Slippage (% each way)<input type="number" id="c-slip" min="0" step="any"></label>
+          <label for="c-tips">Priority fees and tips (USD per round trip)<input type="number" id="c-tips" min="0" step="any"></label>
+        </div>
+        <div id="calc-out"></div>
+        <p class="fine">Break-even only: what a month of trades has to earn to cover the data plan and each buy-and-sell's fees, slippage and tips. The gain per trade is an average over all trades, losers included, so winners have to beat it. Check Photon's trade history for your real slippage. Cost math only, not financial advice.</p>
+      </div>
     </div>
     <aside class="side">
       <div class="tiles two">
@@ -1119,7 +1145,7 @@ const S = {
   band: store.get("band", "all")
 };
 let solView = store.get("solView", "buys"), stkView = store.get("stkView", "movers"), newsView = store.get("newsView", "stocks");
-if (!["buys","big","all"].includes(solView)) solView = "buys";
+if (!["buys","big","all","calc"].includes(solView)) solView = "buys";
 if (!["movers","latest","biggest","insider"].includes(stkView)) stkView = "movers";
 const SD = {}; // per-ticker Finnhub data
 const sd = s => SD[s] || (SD[s] = {busy:new Set()});
@@ -1567,7 +1593,7 @@ function renderHot(){
 }
 function updateSolMeta(){
   const at = isLeader ? lastScanAt : ((store.get("solStatus", null) || {}).lastScanAt || 0);
-  $("sol-meta").textContent = "≥ "+usd(S.solTh)+" · "+VIEWS[solView].label+(at ? " · checked "+ago(at) : "");
+  $("sol-meta").textContent = solView === "calc" ? "break-even calculator" : "≥ "+usd(S.solTh)+" · "+VIEWS[solView].label+(at ? " · checked "+ago(at) : "");
 }
 function solEmpty(){
   if (gtLimited) return "GeckoTerminal is rate-limiting this network right now, so new swaps are paused and retrying. Biggest volume still shows live 5-minute volume.";
@@ -1583,7 +1609,7 @@ function renderSol(){
   for (const [id, t] of solTrades) if (now - t.t > KEEP_MS) solTrades.delete(id);
   if (solTrades.size > 1500) for (const t of [...solTrades.values()].sort((a, b) => a.t - b.t).slice(0, solTrades.size - 1500)) solTrades.delete(t.id);
   const all = [...solTrades.values()].filter(t => t.usd >= S.solTh);
-  const V = VIEWS[solView];
+  const V = VIEWS[solView] || VIEWS.buys, calc = solView === "calc";
   let list = all.filter(t => now - t.t < V.win && V.keep(t) && inBand(t.mcap));
   if (walletFilter) list = list.filter(t => t.wallet === walletFilter);
   list.sort(V.sort);
@@ -1594,6 +1620,8 @@ function renderSol(){
   for (const b of $("sol-views").querySelectorAll("button")) b.setAttribute("aria-selected", String(b.dataset.view === solView));
   $("hot-wrap").hidden = solView !== "big";
   if (solView === "big") renderHot();
+  $("calc").hidden = !calc; $("sol-feed").hidden = calc; $("mc-chips").hidden = calc; $("sol-filter").hidden = calc || !walletFilter;
+  if (calc) renderCalc();
   const seenCoins = seenMap();
   $("sol-feed").innerHTML = list.length
     ? list.slice(0, V.max).map(t => { const html = solRowHTML({...t, big:t.usd >= S.solTh*10, flash:t.fresh && !t.shown && now - t.seen < 15000, rep:t.kind === "buy" ? reps.get(t.wallet+"|"+t.mint) : 0}, seenCoins); t.shown = true; return html; }).join("")
@@ -1640,6 +1668,29 @@ $("hot-feed").addEventListener("click", e => {
   markSeen(a.dataset.mint, a.dataset.sym); setTimeout(renderSol, 50);
 });
 addEventListener("storage", e => { if (e.key === "ws:seen") renderSol(); });
+// ---------- Break-even calculator (Meme coins → Break-even) ----------
+const CALC_DEF = {cap:500, size:100, plan:79, photon:1, pool:0.25, slip:2, tips:1};
+const calcVals = () => ({...CALC_DEF, ...store.get("calc", {})});
+function renderCalc(){
+  const c = calcVals();
+  for (const k in CALC_DEF){ const el = $("c-"+k); if (el && document.activeElement !== el) el.value = c[k]; }
+  // One round trip = a buy and a sell of the trade size, each paying Photon's fee, the pool fee and slippage, plus tips.
+  const rt = c.size * 2 * (c.photon + c.pool + c.slip) / 100 + c.tips;
+  const rows = [1, 5, 10, 20, 40].map(n => { const cost = c.plan + n * rt; return {n, cost, ret:cost / c.cap * 100, per:cost / (n * c.size) * 100}; });
+  const top = Math.max(...rows.map(r => r.ret), 1), p1 = x => x.toFixed(1)+"%";
+  $("calc-out").innerHTML =
+    (c.size > c.cap ? '<p class="calc-note neg">Trade size is bigger than your capital.</p>' : '')+
+    '<p class="calc-note muted">Each round trip costs about $'+rt.toFixed(2)+' ('+p1(rt / c.size * 100)+' of a trade). '+
+    (c.plan ? 'The plan alone is '+p1(c.plan / c.cap * 100)+' of your capital a month.' : 'No plan cost.')+'</p>'+
+    '<div class="calc-wrap"><table class="calc-t"><thead><tr><th>Trades/mo</th><th>Cost/mo</th><th>Needed on capital</th><th>Needed per trade</th><th class="bar-cell"></th></tr></thead><tbody>'+
+    rows.map(r => '<tr><td>'+r.n+'</td><td>$'+r.cost.toFixed(0)+'</td><td>'+p1(r.ret)+'</td><td>'+p1(r.per)+'</td><td class="bar-cell"><div class="calc-bar" style="width:'+Math.min(100, r.ret / top * 100).toFixed(1)+'%"></div></td></tr>').join("")+
+    '</tbody></table></div>';
+}
+$("calc").addEventListener("input", e => {
+  const k = (e.target.id || "").slice(2), v = +e.target.value;
+  if (!(k in CALC_DEF) || e.target.value === "" || !isFinite(v) || v < 0 || ((k === "cap" || k === "size") && v <= 0)) return;
+  store.set("calc", {...calcVals(), [k]:v}); renderCalc();
+});
 $("sol-clear").onclick = () => { walletFilter = null; $("sol-filter").hidden = true; renderSol(); };
 addEventListener("keydown", e => { if (e.key === "Escape" && walletFilter) $("sol-clear").click(); });
 function syncChips(){ for (const b of $("mc-chips").querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.band === S.band)); }
