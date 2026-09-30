@@ -755,7 +755,7 @@ function tradeView(q){
   for (const k of ["mint","pool","wallet","tx"]) if (!B58.test(T[k])) T[k] = "";
   document.title = T.sym+" whale "+T.kind+" · Whale Sonar";
   const L = {
-    photon: T.pool && photonUrl(T.pool),
+    photon: (T.mint || T.pool) && photonUrl(T.mint || T.pool), // Photon opens its own pool for a token address
     birdeye: T.wallet && walletUrl(T.wallet),
     gmgn: T.wallet && "https://gmgn.ai/sol/address/"+T.wallet,
     solW: T.wallet && "https://solscan.io/account/"+T.wallet,
@@ -1247,9 +1247,15 @@ function poolFromGT(p, src){
   return {addr:a.address, name:a.name || "", sym:(a.name || "?").split(" / ")[0].trim(),
     mint:(p.relationships?.base_token?.data?.id || "").replace(/^solana_/, ""),
     mcap:+a.market_cap_usd || +a.fdv_usd || 0, liq:+a.reserve_in_usd || 0, vol24:+vol.h24 || 0, vol1h:+vol.h1 || 0,
-    created:Date.parse(a.pool_created_at) || 0, src};
+    created:Date.parse(a.pool_created_at) || 0, dex:p.relationships?.dex?.data?.id || "", src};
 }
-const qualifies = o => !!o.addr && !!o.mint && !SKIP_MINTS.has(o.mint) && o.liq >= MIN_LIQ && (o.vol24 >= S.minVol || o.vol1h >= S.minVol / 6);
+// Exchanges Photon trades on (its Dexes filter, Sep 2026: Pump.fun, PumpSwap, Raydium LaunchLab/V4/CLMM/CPMM,
+// Meteora DBC/DAMM/DLMM/DYN, Boop.fun, Moonit, Orca, Heaven), as GeckoTerminal/DexScreener dex ids; letsbonk (LaunchLab)
+// and bags (Meteora DBC) launch on those. PHOTON_PROTO is the same list as Bitquery protocol names.
+// ponytail: hand-kept; add a venue here when Photon adds one to that filter.
+const PHOTON_DEX = /^(raydium|pump|meteora|orca|launchlab|moonit|moonshot|boop|heaven|letsbonk|bags)/;
+const PHOTON_PROTO = /pump|raydium|meteora|orca|whirlpool|moonit|moonshot|boop|heaven|launchlab/i;
+const qualifies = o => !!o.addr && !!o.mint && !SKIP_MINTS.has(o.mint) && (!o.dex || PHOTON_DEX.test(o.dex)) && o.liq >= MIN_LIQ && (o.vol24 >= S.minVol || o.vol1h >= S.minVol / 6);
 function upsertPool(o){
   const p = pools.get(o.addr);
   if (!p){ pools.set(o.addr, {...o, lastScan:0, hits:0, lastHit:0, v5:0, b5:0, s5:0, pc5:0, pulseAt:0, acc:0}); return; }
@@ -1299,7 +1305,7 @@ async function discoverDexScreener(){
       }
       for (const p of best.values()){
         const o = {addr:p.pairAddress, name:(p.baseToken.symbol || "?")+" / "+(p.quoteToken?.symbol || ""), sym:p.baseToken.symbol || "?", mint:p.baseToken.address,
-          mcap:+p.marketCap || +p.fdv || 0, liq:+(p.liquidity?.usd) || 0, vol24:+(p.volume?.h24) || 0, vol1h:+(p.volume?.h1) || 0, created:+p.pairCreatedAt || 0, src:"boosted"};
+          mcap:+p.marketCap || +p.fdv || 0, liq:+(p.liquidity?.usd) || 0, vol24:+(p.volume?.h24) || 0, vol1h:+(p.volume?.h1) || 0, created:+p.pairCreatedAt || 0, dex:p.dexId || "", src:"boosted"};
         if (qualifies(o)) upsertPool(o);
       }
     } catch {}
@@ -1414,17 +1420,13 @@ function notifyBuy(t){
   if (!("Notification" in window) || Notification.permission !== "granted") return;
   try {
     const n = new Notification("Whale buy: "+usd(t.usd)+" of "+t.sym, {body:"MC "+(t.mcap ? usd(t.mcap) : "—")+" · "+ago(t.t)+" · click to open on Photon", tag:t.id});
-    n.onclick = () => { window.open(photonUrl(t.pool), "_blank", "noopener"); n.close(); };
+    n.onclick = () => { window.open(photonUrl(t.mint || t.pool), "_blank", "noopener"); n.close(); };
   } catch {}
 }
 // ---------- Bitquery (optional token): one query covers whale swaps on every Solana coin ----------
 const BQ = "https://streaming.bitquery.io/graphql";
 const BASE_MINTS = ["So11111111111111111111111111111111111111112", "11111111111111111111111111111111", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"];
 const bqMeta = new Map(); // mint -> {photon, pool, mcap, liq, created, at} from DexScreener
-// Exchanges Photon trades on: DexScreener dexIds, and Bitquery protocol names for coins DexScreener hasn't listed yet.
-// ponytail: hand-kept lists (Photon publishes none); add a venue here when Photon adds one.
-const PHOTON_DEX = /^(raydium|pumpfun|pumpswap|meteora|orca|launchlab|moonshot)/;
-const PHOTON_PROTO = /pump|raydium|meteora|orca|whirlpool|moonshot|launch/i;
 let bqOff = false, bqFails = 0, bqSince = 0, bqBusy = false, bqWs = null, bqLive = false, bqRetry = 0, bqNextTry = 0;
 const bqOn = () => !!S.bqKey && !bqOff;
 // Swaps over the whale size on either side, not counting SOL/USDC/USDT legs. The stream uses the same filter, live.
@@ -1550,7 +1552,7 @@ function hotPools(){
   return [...pools.values()].filter(p => p.pulseAt && now - p.pulseAt < 120e3 && p.v5 > 0).sort((a, b) => b.v5 - a.v5).slice(0, 20);
 }
 function coinRow(p, seen = seenMap()){
-  return '<li class="'+(p.pc5 >= 0 ? "buy" : "sell")+(p.mint && seen[p.mint] ? " seen" : "")+'"><a class="rowlink" href="'+esc(photonUrl(p.addr))+'" target="_blank" rel="noopener" title="Open '+esc(p.sym)+' on Photon" data-mint="'+esc(p.mint || "")+'" data-sym="'+esc(p.sym)+'"><span class="stripe"></span><div>'+
+  return '<li class="'+(p.pc5 >= 0 ? "buy" : "sell")+(p.mint && seen[p.mint] ? " seen" : "")+'"><a class="rowlink" href="'+esc(photonUrl(p.mint || p.addr))+'" target="_blank" rel="noopener" title="Open '+esc(p.sym)+' on Photon" data-mint="'+esc(p.mint || "")+'" data-sym="'+esc(p.sym)+'"><span class="stripe"></span><div>'+
     '<div class="line1">'+mintBadge(p.mint)+'<span class="sym">'+esc(p.sym)+'</span><span class="kind">'+pct(p.pc5)+' · 5m</span><span class="muted sm">'+(p.b5 || 0)+' buys · '+(p.s5 || 0)+' sells</span>'+seenTags(p.mint, p.sym, seen)+'</div>'+
     '<div class="line2">'+(p.mint ? '<span class="addr coin" title="Coin address '+esc(p.mint)+'">coin '+esc(short(p.mint))+'</span>' : '')+'<span>MC '+(p.mcap ? usd(p.mcap) : "—")+'</span><span>Liq '+usd(p.liq)+'</span><span>1h vol '+usd(p.vol1h)+'</span><span>Photon ↗</span></div></div>'+
     '<div><div class="usd">'+usd(p.v5)+'</div><div class="ago">5-min volume</div></div></a></li>';
